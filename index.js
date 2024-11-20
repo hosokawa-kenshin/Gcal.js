@@ -68,7 +68,7 @@ async function authorize() {
   
 function parseDateString(dateStr, year) {
   const [month, day] = dateStr.split('/').map(Number);
-  return new Date(Date.JST(year, month - 1, day));
+  return new Date(Date.UTC(year, month - 1, day));
 }
 
 function toLocalISOString(date = new Date()) {
@@ -149,13 +149,14 @@ const args = process.argv.slice(2);
 const today = new Date();
 const today_end = new Date(today);
 today_end.setHours(24, 0, 0, 0);
-
+let startDate;
+let endDate;
 
 // authorize().then(listCalendars).catch(console.error);
 const currentYear = new Date().getFullYear();
 if (args.length === 2) {
-  let startDate = parseDateString(args[0], currentYear);
-  let endDate = parseDateString(args[1], currentYear);
+  startDate = parseDateString(args[0], currentYear);
+  endDate = parseDateString(args[1], currentYear);
 
   if (endDate < startDate) {
     endDate = parseDateString(args[1], currentYear + 1);
