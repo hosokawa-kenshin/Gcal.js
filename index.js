@@ -68,8 +68,28 @@ async function authorize() {
   
 function parseDateString(dateStr, year) {
   const [month, day] = dateStr.split('/').map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
+  return new Date(Date.JST(year, month - 1, day));
 }
+
+function toLocalISOString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // 月は0-indexed
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+
+  // タイムゾーンオフセット
+  const offsetMinutes = date.getTimezoneOffset(); // 分単位のオフセット
+  const offsetSign = offsetMinutes <= 0 ? "+" : "-";
+  const offsetHours = String(Math.abs(offsetMinutes) / 60 | 0).padStart(2, "0");
+  const offsetMins = String(Math.abs(offsetMinutes) % 60).padStart(2, "0");
+  const timezoneOffset = `${offsetSign}${offsetHours}:${offsetMins}`;
+
+  // ISO 8601 形式の文字列を返す
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${timezoneOffset}`;
+}
+
   /**
    * Lists events on specified calendars within a given date range.
    * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
@@ -126,20 +146,28 @@ async function listCalendars(auth) {
 }
   
 const args = process.argv.slice(2);
-if (args.length < 2) {
-  console.error('Please provide a start date and an end date in the format "MM/DD".');
-  process.exit(1);
-}
+const today = new Date();
+const today_end = new Date(today);
+today_end.setHours(24, 0, 0, 0);
+
 
 // authorize().then(listCalendars).catch(console.error);
 const currentYear = new Date().getFullYear();
-let startDate = parseDateString(args[0], currentYear);
-let endDate = parseDateString(args[1], currentYear);
+if (args.length === 2) {
+  let startDate = parseDateString(args[0], currentYear);
+  let endDate = parseDateString(args[1], currentYear);
 
-if (endDate < startDate) {
-  endDate = parseDateString(args[1], currentYear + 1);
+  if (endDate < startDate) {
+    endDate = parseDateString(args[1], currentYear + 1);
+  }
 }
 
 authorize().then((auth) => {
-  listEvents(auth, startDate.toISOString(), endDate.toISOString());
+
+  if (args.length === 0) {
+    startDate = toLocalISOString();
+    endDate = toLocalISOString(today_end);
+  }
+        
+  listEvents(auth, startDate, endDate);
 }).catch(console.error);
