@@ -1,0 +1,12 @@
+#!/bin/bash
+cmdpath=$(readlink $0 -f || echo $0)
+cd $(dirname $cmdpath)
+
+first=$1
+second=$2
+
+if [ -z "$first" ] || [ -z "$second" ]; then
+  node index.js
+else
+  node index.js $first $second
+fi

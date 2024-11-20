@@ -43,3 +43,13 @@ node index.js 01/01 12/31
 + (11/23) 忘年会
 ```
 指定されたカレンダー内のイベントが，開始日時順にソートされ，+ (MM/DD) イベントのタイトル形式で出力される．
+
+### コマンドとして実行
+
+コマンドとして実行したい場合はパスを通した任意のディレクトリ内にcldrファイルへのシンボリックリンクを作成してください．
+
+``` bash
+export PATH=path/to/your/directory:$PATH
+cd your/directory
+ln -s path/to/google_calendar_to_markdown/cldr cldr
+```
