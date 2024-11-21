@@ -65,7 +65,7 @@ async function authorize() {
   }
   return client;
 }
-  
+
 function parseDateString(dateStr, year) {
   const [month, day] = dateStr.split('/').map(Number);
   return new Date(Date.UTC(year, month - 1, day));
@@ -90,6 +90,12 @@ function toLocalISOString(date = new Date()) {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${timezoneOffset}`;
 }
 
+function getOneMonthLater(startDate) {
+  const date = new Date(startDate);
+  date.setMonth(date.getMonth() + 1);
+  return date.toISOString();
+}
+
   /**
    * Lists events on specified calendars within a given date range.
    * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
@@ -97,57 +103,85 @@ function toLocalISOString(date = new Date()) {
    * @param {string} timeMax The end date in ISO format.
    */
 async function listEvents(auth, timeMin, timeMax) {
-    const calendar = google.calendar({version: 'v3', auth});
-    let allEvents = [];
-  
-    for (const calendarId of calendarIds) {
-      const res = await calendar.events.list({
-        calendarId: calendarId,
-        timeMin: timeMin,
-        timeMax: timeMax,
-        singleEvents: true,
-        orderBy: 'startTime',
-      });
-      
-      const events = res.data.items;
-      if (events && events.length > 0) {
-        allEvents = allEvents.concat(events.map(event => ({
-          start: new Date(event.start.dateTime || event.start.date),
-          summary: event.summary,
-          calendarId: calendarId
-        })));
-      }
-    }
-  
-    allEvents.sort((a, b) => a.start - b.start);
-  
-    console.log('Sorted events:');
-    allEvents.forEach(event => {
-      const startDate = event.start;
-      const month = startDate.getMonth() + 1;
-      const day = startDate.getDate();
-      const formattedEvent = `+ (${month}/${day}) ${event.summary}`;
-      console.log(formattedEvent);
+  const calendar = google.calendar({version: 'v3', auth});
+  let allEvents = [];
+
+  for (const calendarId of calendarIds) {
+    const res = await calendar.events.list({
+      calendarId: calendarId,
+      timeMin: timeMin,
+      timeMax: timeMax,
+      singleEvents: true,
+      orderBy: 'startTime',
     });
+
+    const events = res.data.items;
+    if (events && events.length > 0) {
+      allEvents = allEvents.concat(events.map(event => ({
+        start: new Date(event.start.dateTime || event.start.date),
+        summary: event.summary,
+        calendarId: calendarId
+      })));
+    }
   }
 
-async function listCalendars(auth) {
-    const calendar = google.calendar({version: 'v3', auth});
-    const res = await calendar.calendarList.list();
-    const calendars = res.data.items;
-    if (!calendars || calendars.length === 0) {
-      console.log('No calendars found.');
-      return;
-    }
-    console.log('Subscribed calendars:');
-    calendars.map((cal) => {
-      console.log(`${cal.summary} (ID: ${cal.id})`);
-    });
+  allEvents.sort((a, b) => a.start - b.start);
+  console.log('Sorted events:');
+  return allEvents;
 }
-  
+
+async function displayEvents(events){
+  events.forEach(event => {
+    const startDate = event.start;
+    const month = startDate.getMonth() + 1;
+    const day = startDate.getDate();
+    const formattedEvent = `+ (${month}/${day}) ${event.summary}`;
+    console.log(formattedEvent);
+  });
+}
+
+async function displaySortedEvents(auth, timeMin, timeMax) {
+  const events = await listEvents(auth, timeMin, timeMax); // イベントの取得を待つ
+  const keywordEvents = await searchKeywordEvents(events, args[1]); // キーワード検索を待つ
+
+  displayEvents(keywordEvents); // 検索結果を表示
+}
+
+async function listCalendars(auth) {
+  const calendar = google.calendar({version: 'v3', auth});
+  const res = await calendar.calendarList.list();
+  const calendars = res.data.items;
+  if (!calendars || calendars.length === 0) {
+    console.log('No calendars found.');
+    return;
+  }
+  console.log('Subscribed calendars:');
+  calendars.map((cal) => {
+    console.log(`${cal.summary} (ID: ${cal.id})`);
+  });
+}
+
+async function searchKeywordEvents(events, keyword) {
+  let keywordEvents = [];
+
+  events.forEach(event => {
+    const eventStartDate = new Date(event.start);
+    const formattedStartDate = `${eventStartDate.getMonth() + 1}/${eventStartDate.getDate()}`;
+
+    // キーワードが一致するかチェック
+    if (formattedStartDate.includes(keyword) || event.summary.includes(keyword)) {
+      keywordEvents.push(event);
+    }
+  });
+
+  return keywordEvents;
+}
+
 const args = process.argv.slice(2);
 const today = new Date();
+const today_start = new Date(today);
 const today_end = new Date(today);
+today_start.setHours(0, 0, 0, 0);
 today_end.setHours(24, 0, 0, 0);
 let startDate;
 let endDate;
@@ -156,25 +190,42 @@ switch (args[0]){
   case 'list':
     authorize().then(listCalendars).catch(console.error);
     break;
+  case 'nm':
+    authorize().then((auth) => {
+      startDate = toLocalISOString(today_start);
+      endDate = getOneMonthLater(startDate);
+      if (!args[1]) {
+        listEvents(auth, startDate, endDate).then((events) => {
+          displayEvents(events);
+        });
+      } else {
+      displaySortedEvents(auth, startDate, endDate);
+      }
+    }).catch(console.error);
+      //  authorize().then(listCalendars).catch(console.error);
+    break;
   default:
     const currentYear = new Date().getFullYear();
     if (args.length === 2) {
       startDate = parseDateString(args[0], currentYear);
       endDate = parseDateString(args[1], currentYear);
-    
+
       if (endDate < startDate) {
         endDate = parseDateString(args[1], currentYear + 1);
       }
     }
 
     authorize().then((auth) => {
-    
+
       if (args.length === 0) {
         startDate = toLocalISOString();
         endDate = toLocalISOString(today_end);
       }
-            
-      listEvents(auth, startDate, endDate);
+
+      listEvents(auth, startDate, endDate).then((events) => {
+        displayEvents(events);
+      });
+
     }).catch(console.error);
     break;
 }

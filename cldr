@@ -9,6 +9,10 @@ if [ -z "$first" ] && [ -z "$second" ]; then
   node index.js
 elif [ $first == "list" ]; then
   node index.js list
+elif [ $first == "nm" ] && [ $second ]; then
+  node index.js nm $second
+elif [ $first == "nm" ] && [ -z "$second" ]; then
+  node index.js nm
 else
   node index.js $first $second
 fi
