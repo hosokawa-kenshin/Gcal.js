@@ -5,8 +5,10 @@ cd $(dirname $cmdpath)
 first=$1
 second=$2
 
-if [ -z "$first" ] || [ -z "$second" ]; then
+if [ -z "$first" ] && [ -z "$second" ]; then
   node index.js
+elif [ $first == "list" ]; then
+  node index.js list
 else
   node index.js $first $second
 fi

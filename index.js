@@ -152,23 +152,29 @@ today_end.setHours(24, 0, 0, 0);
 let startDate;
 let endDate;
 
-// authorize().then(listCalendars).catch(console.error);
-const currentYear = new Date().getFullYear();
-if (args.length === 2) {
-  startDate = parseDateString(args[0], currentYear);
-  endDate = parseDateString(args[1], currentYear);
+switch (args[0]){
+  case 'list':
+    authorize().then(listCalendars).catch(console.error);
+    break;
+  default:
+    const currentYear = new Date().getFullYear();
+    if (args.length === 2) {
+      startDate = parseDateString(args[0], currentYear);
+      endDate = parseDateString(args[1], currentYear);
+    
+      if (endDate < startDate) {
+        endDate = parseDateString(args[1], currentYear + 1);
+      }
+    }
 
-  if (endDate < startDate) {
-    endDate = parseDateString(args[1], currentYear + 1);
-  }
+    authorize().then((auth) => {
+    
+      if (args.length === 0) {
+        startDate = toLocalISOString();
+        endDate = toLocalISOString(today_end);
+      }
+            
+      listEvents(auth, startDate, endDate);
+    }).catch(console.error);
+    break;
 }
-
-authorize().then((auth) => {
-
-  if (args.length === 0) {
-    startDate = toLocalISOString();
-    endDate = toLocalISOString(today_end);
-  }
-        
-  listEvents(auth, startDate, endDate);
-}).catch(console.error);
