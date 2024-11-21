@@ -73,9 +73,11 @@ function parseDateString(dateStr, year) {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-function convertToDateTime(timeString) {
+function convertToDateTime(dateString, timeString) {
+  const [year, month, day] = dateString.split('/').map(Number);
   const [hours, minutes] = timeString.split(':').map(Number);
   const now = new Date();
+  now.setFullYear(year, month - 1, day);
   now.setHours(hours, minutes, 0, 0);
   return now;
 }
@@ -214,6 +216,13 @@ async function addEvent(auth) {
     initial: 'New event',
   });
 
+  const date = await askQuestion({
+    type: 'input',
+    name: 'date',
+    message: 'What date the event is?',
+    initial: '2024/01/01',
+  });
+
   const start_time = await askQuestion({
     type: 'input',
     name: 'start_time',
@@ -231,10 +240,10 @@ async function addEvent(auth) {
   const event = {
     summary: summary,
     start: {
-      dateTime: convertToDateTime(start_time).toISOString(),
+      dateTime: convertToDateTime(date, start_time).toISOString(),
     },
     end: {
-      dateTime: convertToDateTime(end_time).toISOString(),
+      dateTime: convertToDateTime(date, end_time).toISOString(),
     },
   };
 
