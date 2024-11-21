@@ -4,6 +4,8 @@ const process = require('process');
 const {authenticate} = require('@google-cloud/local-auth');
 const {google} = require('googleapis');
 const calendarIds = require('./calendarIds');
+const Enquirer = require('enquirer');
+const { prompt } = require('enquirer');
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -69,6 +71,13 @@ async function authorize() {
 function parseDateString(dateStr, year) {
   const [month, day] = dateStr.split('/').map(Number);
   return new Date(Date.UTC(year, month - 1, day));
+}
+
+function convertToDateTime(timeString) {
+  const [hours, minutes] = timeString.split(':').map(Number);
+  const now = new Date();
+  now.setHours(hours, minutes, 0, 0);
+  return now;
 }
 
 function toLocalISOString(date = new Date()) {
@@ -156,10 +165,7 @@ async function listCalendars(auth) {
     console.log('No calendars found.');
     return;
   }
-  console.log('Subscribed calendars:');
-  calendars.map((cal) => {
-    console.log(`${cal.summary} (ID: ${cal.id})`);
-  });
+  return calendars;
 }
 
 async function searchKeywordEvents(events, keyword) {
@@ -178,20 +184,61 @@ async function searchKeywordEvents(events, keyword) {
   return keywordEvents;
 }
 
-async function addEvent(auth, calendarId, summary) {
+async function askQuestion(questionConfig) {
+  try {
+    const answer = await Enquirer.prompt(questionConfig);
+    return answer[questionConfig.name];
+  } catch (error) {
+    console.error('Error during prompt:', error);
+    throw error;
+  }
+}
+
+async function addEvent(auth) {
   const calendar = google.calendar({version: 'v3', auth});
+  const calendars = await listCalendars(auth);
+  const calendarId = await askQuestion({
+    type: 'select',
+    name: 'calendarId',
+    message: 'Select a calendar',
+    choices: calendars.map((calendar) => ({
+      name: calendar.id,
+      message: calendar.summary,
+    })),
+  });
+
+  const summary = await askQuestion({
+    type: 'input',
+    name: 'summary',
+    message: 'What is the event name?',
+    initial: 'New event',
+  });
+
+  const start_time = await askQuestion({
+    type: 'input',
+    name: 'start_time',
+    message: 'What time the event starts?',
+    initial: '12:00',
+  });
+
+  const end_time = await askQuestion({
+    type: 'input',
+    name: 'end_time',
+    message: 'What time the event ends?',
+    initial: '13:00',
+  });
+
   const event = {
     summary: summary,
     start: {
-      dateTime: today,
+      dateTime: convertToDateTime(start_time).toISOString(),
     },
     end: {
-      dateTime: end_event_time,
+      dateTime: convertToDateTime(end_time).toISOString(),
     },
   };
 
   calendar.events.insert({
-
     calendarId: calendarId,
     resource: event,
   }, (err, res) => {
@@ -215,7 +262,14 @@ let endDate;
 
 switch (args[0]){
   case 'list':
-    authorize().then(listCalendars).catch(console.error);
+    authorize().then((auth) => {
+      console.log('Calendars:');
+      listCalendars(auth).then((calendars) => {
+        calendars.map((cal) => {
+          console.log(`${cal.summary} (ID: ${cal.id})`);
+        });
+      });
+    }).catch(console.error);
     break;
   case 'nm':
     authorize().then((auth) => {
@@ -232,7 +286,7 @@ switch (args[0]){
     break;
   case 'add':
     authorize().then((auth) => {
-      addEvent(auth, args[1], args.slice(2).join(' '));
+      addEvent(auth);
     }).catch(console.error);
     break;
   default:

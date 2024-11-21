@@ -4,7 +4,6 @@ cd $(dirname $cmdpath)
 
 first=$1
 second=$2
-third=$3
 
 if [ -z "$first" ] && [ -z "$second" ]; then
   node index.js
@@ -15,7 +14,7 @@ elif [ $first == "nm" ] && [ $second ]; then
 elif [ $first == "nm" ] && [ -z "$second" ]; then
   node index.js nm
 elif [ $first == "add" ]; then
-  node index.js add $second $third
+  node index.js add
 else
   node index.js $first $second
 fi
