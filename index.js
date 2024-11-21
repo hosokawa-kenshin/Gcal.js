@@ -6,7 +6,7 @@ const {google} = require('googleapis');
 const calendarIds = require('./calendarIds');
 
 // If modifying these scopes, delete token.json.
-const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
+const SCOPES = ['https://www.googleapis.com/auth/calendar'];
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
@@ -103,30 +103,31 @@ function getOneMonthLater(startDate) {
    * @param {string} timeMax The end date in ISO format.
    */
 async function listEvents(auth, timeMin, timeMax) {
-  const calendar = google.calendar({version: 'v3', auth});
-  let allEvents = [];
+    const calendar = google.calendar({version: 'v3', auth});
+    let allEvents = [];
 
-  for (const calendarId of calendarIds) {
-    const res = await calendar.events.list({
-      calendarId: calendarId,
-      timeMin: timeMin,
-      timeMax: timeMax,
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
+    for (const calendarId of calendarIds) {
+      const res = await calendar.events.list({
+        calendarId: calendarId,
+        timeMin: timeMin,
+        timeMax: timeMax,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
 
-    const events = res.data.items;
-    if (events && events.length > 0) {
-      allEvents = allEvents.concat(events.map(event => ({
-        start: new Date(event.start.dateTime || event.start.date),
-        summary: event.summary,
-        calendarId: calendarId
-      })));
+      const events = res.data.items;
+      if (events && events.length > 0) {
+        allEvents = allEvents.concat(events.map(event => ({
+          start: new Date(event.start.dateTime || event.start.date),
+          summary: event.summary,
+          calendarId: calendarId
+        })));
+      }
     }
-  }
 
-  allEvents.sort((a, b) => a.start - b.start);
-  console.log('Sorted events:');
+    allEvents.sort((a, b) => a.start - b.start);
+
+    console.log('Sorted events:');
   return allEvents;
 }
 
@@ -177,9 +178,35 @@ async function searchKeywordEvents(events, keyword) {
   return keywordEvents;
 }
 
+async function addEvent(auth, calendarId, summary) {
+  const calendar = google.calendar({version: 'v3', auth});
+  const event = {
+    summary: summary,
+    start: {
+      dateTime: today,
+    },
+    end: {
+      dateTime: end_event_time,
+    },
+  };
+
+  calendar.events.insert({
+
+    calendarId: calendarId,
+    resource: event,
+  }, (err, res) => {
+    if (err) return console.error('The API returned an error: ' + err);
+    console.log(`Event added: ${summary}`);
+  }
+  );
+}
+
 const args = process.argv.slice(2);
 const today = new Date();
 const today_start = new Date(today);
+const end_event_time = new Date(today);
+const during = 1;
+end_event_time.setHours(end_event_time.getHours() + during);
 const today_end = new Date(today);
 today_start.setHours(0, 0, 0, 0);
 today_end.setHours(24, 0, 0, 0);
@@ -202,14 +229,17 @@ switch (args[0]){
       displaySortedEvents(auth, startDate, endDate);
       }
     }).catch(console.error);
-      //  authorize().then(listCalendars).catch(console.error);
+    break;
+  case 'add':
+    authorize().then((auth) => {
+      addEvent(auth, args[1], args.slice(2).join(' '));
+    }).catch(console.error);
     break;
   default:
     const currentYear = new Date().getFullYear();
     if (args.length === 2) {
       startDate = parseDateString(args[0], currentYear);
       endDate = parseDateString(args[1], currentYear);
-
       if (endDate < startDate) {
         endDate = parseDateString(args[1], currentYear + 1);
       }
