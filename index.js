@@ -129,7 +129,7 @@ async function listEvents(auth, timeMin, timeMax) {
 
       const events = res.data.items;
       if (events && events.length > 0) {
-        listEvents = allEvents.concat(events.map(event => ({
+        listEvents = listEvents.concat(events.map(event => ({
           id: event.id,
           start: new Date(event.start.dateTime || event.start.date),
           summary: event.summary,
