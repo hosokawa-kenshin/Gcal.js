@@ -419,27 +419,25 @@ switch (args[0]){
     }).catch(console.error);
     break;
 
-  default:
+  case 'md':
     const currentYear = new Date().getFullYear();
-    if (args.length === 2) {
-      startDate = parseDateString(args[0], currentYear);
-      endDate = parseDateString(args[1], currentYear);
+    if (args.length === 3) {
+      startDate = parseDateString(args[1], currentYear);
+      endDate = parseDateString(args[2], currentYear);
       if (endDate < startDate) {
-        endDate = parseDateString(args[1], currentYear + 1);
+        endDate = parseDateString(args[2], currentYear + 1);
       }
     }
 
     authorize().then((auth) => {
-
-      if (args.length === 0) {
+      if (args.length === 1) {
         startDate = toLocalISOString();
         endDate = toLocalISOString(today_end);
       }
-
       listEvents(auth, startDate, endDate).then((events) => {
         displayEvents(events);
       });
 
     }).catch(console.error);
     break;
-}
+  }
