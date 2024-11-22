@@ -6,6 +6,7 @@ const {google} = require('googleapis');
 const calendarIds = require('./calendarIds');
 const Enquirer = require('enquirer');
 const { prompt } = require('enquirer');
+const {type} = require('os');
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -115,7 +116,7 @@ function getOneMonthLater(startDate) {
    */
 async function listEvents(auth, timeMin, timeMax) {
     const calendar = google.calendar({version: 'v3', auth});
-    let allEvents = [];
+    let listEvents = [];
 
     for (const calendarId of calendarIds) {
       const res = await calendar.events.list({
@@ -128,7 +129,8 @@ async function listEvents(auth, timeMin, timeMax) {
 
       const events = res.data.items;
       if (events && events.length > 0) {
-        allEvents = allEvents.concat(events.map(event => ({
+        listEvents = allEvents.concat(events.map(event => ({
+          id: event.id,
           start: new Date(event.start.dateTime || event.start.date),
           summary: event.summary,
           calendarId: calendarId
@@ -136,10 +138,57 @@ async function listEvents(auth, timeMin, timeMax) {
       }
     }
 
-    allEvents.sort((a, b) => a.start - b.start);
+    listEvents.sort((a, b) => a.start - b.start);
 
     console.log('Sorted events:');
-  return allEvents;
+  return listEvents;
+}
+
+ /**
+  * listEvents() retrieves events from the calendar written in calendarIds.js, whereas the allEvents() retrieves events fromall calendars associated with the auth 
+  * @param {*} auth 
+  * @param {*} timeMin 
+  * @param {*} timeMAX 
+  */
+async function allEvents(auth, timeMin, timeMax) {
+  const calendar = google.calendar({ version: 'v3', auth });
+
+  let allEventsList = []; 
+
+  const calendars = await listCalendars(auth);
+  const calendarIDs = calendars.map(calendar => calendar.id);
+
+  for (const calendarId of calendarIDs) {
+    try {
+      const res =  await calendar.events.list({
+        calendarId: calendarId,
+        timeMin: timeMin,
+        timeMax: timeMax,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+
+      const events = res.data.items || [];
+      if (events.length > 0) {
+        // イベント情報を統一フォーマットで追加
+        allEventsList = allEventsList.concat(
+          events.map(event => ({
+            id: event.id,
+            start: new Date(event.start.dateTime || event.start.date),
+            summary: event.summary,
+            calendarId: calendarId,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error(`Error fetching events for calendar ${calendarId}:`, error.message);
+    }
+  }
+
+  // 開始時間でソート
+  allEventsList.sort((a, b) => a.start - b.start);
+
+  return allEventsList;
 }
 
 async function displayEvents(events){
@@ -257,6 +306,71 @@ async function addEvent(auth) {
   );
 }
 
+async function deleteEvent(auth) {
+  const calendar = google.calendar({version: 'v3', auth});
+  const calendars = await listCalendars(auth);
+  const calendarId = await askQuestion({
+      type: 'select',
+      name: 'calendarId',
+      message: 'Select a calendar',
+      choices: calendars.map((calendar) => ({
+        name: calendar.id,
+        message: calendar.summary,
+      })),
+  });
+  
+  const startDate = await askQuestion({
+    type: 'input',
+    name: 'startDate',
+    message: 'Enter start date (e.g., 2024/01/01):',
+    initial: '2024/01/01',
+  });
+
+  const endDate = await askQuestion({
+    type: 'input',
+    name: 'endDate',
+    message: 'Enter end date (e.g., 2024/01/31):',
+    initial: '2024/01/31',
+  });
+
+  const start = new Date(startDate).toISOString();
+  const end = new Date(endDate).toISOString();
+
+  const events = await allEvents(auth, start, end);
+  if (events.length === 0) {
+    console.log('No events found for the given date range.');
+    return;
+  }
+
+  const filtered_events = events.filter((event) => event.calendarId === calendarId);
+
+  const eventChoice = await askQuestion({
+    type: 'select',
+    name: 'eventId',
+    message: 'Select an event to delete:',
+    choices: filtered_events.map((event) => ({
+      name: event.calendarId + '|' + event.summary, 
+      message: `${event.start.toLocaleString()} - ${event.summary}`,
+    })),
+  });
+
+  const [selectedCalendarId, eventSummary] = eventChoice.split('|');
+
+  const eventToDelete = filtered_events.find(
+    (event) => event.summary === eventSummary && event.calendarId === selectedCalendarId
+  );
+
+  if (eventToDelete) {
+    await calendar.events.delete({
+      calendarId: selectedCalendarId,
+      eventId: eventToDelete.id, // イベントID
+    });
+    console.log(`Event "${eventSummary}" has been deleted.`);
+  } else {
+    console.log('No matching event found.');
+  }
+}
+
 const args = process.argv.slice(2);
 const today = new Date();
 const today_start = new Date(today);
@@ -298,6 +412,13 @@ switch (args[0]){
       addEvent(auth);
     }).catch(console.error);
     break;
+
+  case 'rm':
+    authorize().then((auth) => {
+        deleteEvent(auth);
+    }).catch(console.error);
+    break;
+
   default:
     const currentYear = new Date().getFullYear();
     if (args.length === 2) {
