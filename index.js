@@ -145,15 +145,15 @@ async function listEvents(auth, timeMin, timeMax) {
 }
 
  /**
-  * listEvents() retrieves events from the calendar written in calendarIds.js, whereas the allEvents() retrieves events fromall calendars associated with the auth 
-  * @param {*} auth 
-  * @param {*} timeMin 
-  * @param {*} timeMAX 
+  * listEvents() retrieves events from the calendar written in calendarIds.js, whereas the allEvents() retrieves events fromall calendars associated with the auth
+  * @param {*} auth
+  * @param {*} timeMin
+  * @param {*} timeMAX
   */
 async function allEvents(auth, timeMin, timeMax) {
   const calendar = google.calendar({ version: 'v3', auth });
 
-  let allEventsList = []; 
+  let allEventsList = [];
 
   const calendars = await listCalendars(auth);
   const calendarIDs = calendars.map(calendar => calendar.id);
@@ -318,7 +318,7 @@ async function deleteEvent(auth) {
         message: calendar.summary,
       })),
   });
-  
+
   const startDate = await askQuestion({
     type: 'input',
     name: 'startDate',
@@ -349,7 +349,7 @@ async function deleteEvent(auth) {
     name: 'eventId',
     message: 'Select an event to delete:',
     choices: filtered_events.map((event) => ({
-      name: event.calendarId + '|' + event.summary, 
+      name: event.calendarId + '|' + event.summary,
       message: `${event.start.toLocaleString()} - ${event.summary}`,
     })),
   });

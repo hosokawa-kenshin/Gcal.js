@@ -1,5 +1,5 @@
-# google_calendar_to_markdown
-このプログラムは，Google Calendar APIを使用して，複数のカレンダーから特定の期間内のイベントを取得し，表示するJavaScriptアプリケーションである．
+# Gcal.js
+このプログラムは，Google Calendar APIを使用して，複数のカレンダーから特定の期間内のイベントを取得し表示したり，予定の追加を行うJavaScriptアプリケーションである．
 
 ## Requirements
 - Node.js
@@ -28,27 +28,6 @@ vim calendarIds.js
 ```
 
 ## 実行方法
-### nodeで実行
-#### 購読カレンダー取得
-コマンドラインからプログラムを実行するときに，listという引数を渡す．
-``` bash
-node index.js list
-```
-#### イベント取得
-コマンドラインからプログラムを実行するときに，開始日と終了日をMM/DD形式で引数として指定する．
-``` bash
-node index.js 01/01 12/31
-```
-例: 上記のコマンドは，1月1日から12月31日までのイベントを取得する．
-
-表示フォーマットは以下の通りである．
-``` bash
-+ (11/19) A社合同会議
-+ (11/21) B社訪問
-+ (11/23) 忘年会
-```
-指定されたカレンダー内のイベントが，開始日時順にソートされ，+ (MM/DD) イベントのタイトル形式で出力される．
-
 ### コマンドとして実行
 
 コマンドとして実行したい場合はパスを通した任意のディレクトリ内にcldrファイルへのシンボリックリンクを作成してください．
@@ -56,8 +35,22 @@ node index.js 01/01 12/31
 ``` bash
 export PATH=path/to/your/directory:$PATH
 cd your/directory
-ln -s path/to/google_calendar_to_markdown/cldr cldr
+ln -s path/to/Gcal.js/cldr cldr
 ```
+
+### cldr コマンド一覧
+
+| コマンド | 説明 | 例 |
+| --- | --- | --- |
+| `cldr list` | 購読カレンダーの取得 | `cldr list` |
+| `cldr nm (keyword)` | イベントの検索（キーワード） | `cldr nm 打合せ` |
+| `cldr 01/01 12/31` | イベントの取得（指定期間） | `cldr 01/01 12/31` |
+| `cldr add` | イベントの追加 | `cldr add` |
+| `cldr rm` | イベントの削除 | `cldr rm` |
+| `cldr md` | イベントの表示 (markdown) | `cldr md` |
+
+
+### コマンドの詳細
 
 #### 購読カレンダー取得
 コマンドからプログラムを実行するときに，listという引数を渡す．
