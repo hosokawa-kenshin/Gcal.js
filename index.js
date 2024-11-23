@@ -7,6 +7,8 @@ const calendarIds = require('./calendarIds');
 const Enquirer = require('enquirer');
 const { prompt } = require('enquirer');
 const {type} = require('os');
+const blessed = require('blessed');
+const contrib = require('blessed-contrib');
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -192,17 +194,62 @@ async function allEvents(auth, timeMin, timeMax) {
   return allEventsList;
 }
 
-// display events in markdown format
-async function displayEvents(events){
-  events.forEach(event => {
-    const startDate = event.start;
-    const month = startDate.getMonth() + 1;
-    const day = startDate.getDate();
 
+async function displayEvents(events) {
+  // Blessedスクリーンを初期化
+  const screen = blessed.screen({
+    smartCSR: true,
+    title: 'Google Calendar Events',
+    fullUnicode: true,
+  });
+
+  const table1 = contrib.table({
+    keys: true,
+    fg: 'white',
+    selectedFg: 'white',
+    selectedBg: 'blue',
+    interactive: true,
+    label: 'Upcoming Events',
+    top: 0,
+    left: 0,
+    width: '50%',
+    height: '100%',
+    border: { type: 'line', fg: 'cyan' },
+    columnSpacing: 1,
+    columnWidth: [6, 12, 50], // 各カラムの幅
+    style: {
+        header: {bold: true},
+    }
+  });
+
+  const table2 = contrib.table({
+    keys: true,
+    fg: 'white',
+    selectedFg: 'white',
+    selectedBg: 'blue',
+    interactive: true,
+    label: 'Events summary',
+    top: 0,
+    left: '50%',
+    width: '50%',
+    height: '100%',
+    border: { type: 'line', fg: 'cyan' },
+    columnSpacing: 1,
+    columnWidth: [20, 20, 50], // 各カラムの幅
+    style: {
+        header: {bold: true},
+    }
+  });
+
+  // イベントデータをフォーマットしてテーブルに渡す
+  const formattedEvents = events.map((event) => {
+    const startDate = event.start;
+    const month = String(startDate.getMonth() + 1).padStart(2, '0');
+    const day = String(startDate.getDate()).padStart(2, '0');
     const hours = String(startDate.getHours()).padStart(2, '0');
     const minutes = String(startDate.getMinutes()).padStart(2, '0');
 
-    let endDate = event.end || null; // 終了時刻がある場合
+    let endDate = event.end || null;
     let endHours = '';
     let endMinutes = '';
 
@@ -210,14 +257,72 @@ async function displayEvents(events){
       endHours = String(endDate.getHours()).padStart(2, '0');
       endMinutes = String(endDate.getMinutes()).padStart(2, '0');
     }
-      const formattedEvent = endDate
-          ? `+ (${month}/${day}) ${hours}:${minutes}-${endHours}:${endMinutes} ${event.summary}`
-          : `+ (${month}/${day}) ${hours}:${minutes} ${event.summary}`;
 
+    const date = `${month}/${day}`;
+    const time = endDate
+      ? `${hours}:${minutes}-${endHours}:${endMinutes}`
+      : `${hours}:${minutes}`;
+    const summary = event.summary;
 
-      console.log(formattedEvent);
+    return [date, time,  summary];
   });
+
+  table1.setData({
+    headers: ['Date', 'Time', 'Event'],
+    data: formattedEvents,
+  });
+  
+  const summaryData = formattedEvents.flatMap((event) => [
+    [`${event[0]}   ${event[1]}`], // 1行目：日付と時間
+    [`${event[2]}`],              // 2行目：イベント名
+    [''],                              // 空行で区切り
+  ]);
+
+  table2.setData({
+    headers: ['Details'],
+    data: summaryData,
+  });
+
+
+  // テーブルをスクリーンに追加
+  screen.append(table1);
+  screen.append(table2);
+
+  // キーボードの入力に対応
+  table1.focus();
+  screen.key(['escape', 'q', 'C-c'], () => process.exit(0));
+
+  // スクリーンをレンダリング
+  screen.render();
 }
+
+
+
+//async function displayEvents(events){
+//  events.forEach(event => {
+//    const startDate = event.start;
+//    const month = startDate.getMonth() + 1;
+//    const day = startDate.getDate();
+//
+//    const hours = String(startDate.getHours()).padStart(2, '0');
+//    const minutes = String(startDate.getMinutes()).padStart(2, '0');
+//
+//    let endDate = event.end || null; // 終了時刻がある場合
+//    let endHours = '';
+//    let endMinutes = '';
+//
+//    if (endDate) {
+//      endHours = String(endDate.getHours()).padStart(2, '0');
+//      endMinutes = String(endDate.getMinutes()).padStart(2, '0');
+//    }
+//      const formattedEvent = endDate
+//          ? `+ (${month}/${day}) ${hours}:${minutes}-${endHours}:${endMinutes} ${event.summary}`
+//          : `+ (${month}/${day}) ${hours}:${minutes} ${event.summary}`;
+//
+//
+//      console.log(formattedEvent);
+//  });
+//}
 
 // display events in markdown format
 async function displayEventsMarkdown(events){
@@ -448,35 +553,13 @@ switch (args[0]){
     }).catch(console.error);
     break;
 
-  case 'md':
-    const currentYear = new Date().getFullYear();
-    if (args.length === 3) {
-      startDate = parseDateString(args[1], currentYear);
-      endDate = parseDateString(args[2], currentYear);
-      if (endDate < startDate) {
-        endDate = parseDateString(args[2], currentYear + 1);
-      }
-    }
-
-    authorize().then((auth) => {
-      if (args.length === 1) {
-        startDate = toLocalISOString();
-        endDate = toLocalISOString(today_end);
-      }
-      listEvents(auth, startDate, endDate).then((events) => {
-        displayEventsMarkdown(events);
-      });
-
-    }).catch(console.error);
-    break;
-
-    case 'show':
-        const current_Year = new Date().getFullYear();
+    case 'md':
+        const currentYear = new Date().getFullYear();
         if (args.length === 3) {
-            startDate = parseDateString(args[1], current_Year);
-            endDate = parseDateString(args[2], current_Year);
+            startDate = parseDateString(args[1], currentYear);
+            endDate = parseDateString(args[2], currentYear);
             if (endDate < startDate) {
-                endDate = parseDateString(args[2], current_Year + 1);
+                endDate = parseDateString(args[2], currentYear + 1);
             }
         }
 
@@ -485,10 +568,31 @@ switch (args[0]){
                 startDate = toLocalISOString();
                 endDate = toLocalISOString(today_end);
             }
+            listEvents(auth, startDate, endDate).then((events) => {
+                displayEventsMarkdown(events);
+            });
+
+        }).catch(console.error);
+        break;
+
+    default:
+        const current_Year = new Date().getFullYear();
+        if (args.length === 2) {
+            startDate = parseDateString(args[0], current_Year);
+            endDate = parseDateString(args[1], current_Year);
+            if (endDate < startDate) {
+                endDate = parseDateString(args[1], current_Year + 1);
+            }
+        }
+
+        authorize().then((auth) => {
+            if (args.length === 0) {
+                startDate = toLocalISOString();
+                endDate = toLocalISOString(today_end);
+            }
             allEvents(auth, startDate, endDate).then((events) => {
                 displayEvents(events);
             });
 
         }).catch(console.error);
-        break;
   }
