@@ -22,8 +22,6 @@ elif [ $first == "delete" ]; then
   node index.js delete 
 elif [ $first == "md" ]; then
   node index.js md $second $third
-elif [ $first == "show" ]; then
-  node index.js show $second $third
 else
   node index.js $first $second
 fi
