@@ -175,6 +175,7 @@ async function allEvents(auth, timeMin, timeMax) {
           events.map(event => ({
             id: event.id,
             start: new Date(event.start.dateTime || event.start.date),
+            end: new Date(event.end.dateTime || event.end.date),
             summary: event.summary,
             calendarId: calendarId,
           }))
@@ -191,7 +192,35 @@ async function allEvents(auth, timeMin, timeMax) {
   return allEventsList;
 }
 
+// display events in markdown format
 async function displayEvents(events){
+  events.forEach(event => {
+    const startDate = event.start;
+    const month = startDate.getMonth() + 1;
+    const day = startDate.getDate();
+
+    const hours = String(startDate.getHours()).padStart(2, '0');
+    const minutes = String(startDate.getMinutes()).padStart(2, '0');
+
+    let endDate = event.end || null; // 終了時刻がある場合
+    let endHours = '';
+    let endMinutes = '';
+
+    if (endDate) {
+      endHours = String(endDate.getHours()).padStart(2, '0');
+      endMinutes = String(endDate.getMinutes()).padStart(2, '0');
+    }
+      const formattedEvent = endDate
+          ? `+ (${month}/${day}) ${hours}:${minutes}-${endHours}:${endMinutes} ${event.summary}`
+          : `+ (${month}/${day}) ${hours}:${minutes} ${event.summary}`;
+
+
+      console.log(formattedEvent);
+  });
+}
+
+// display events in markdown format
+async function displayEventsMarkdown(events){
   events.forEach(event => {
     const startDate = event.start;
     const month = startDate.getMonth() + 1;
@@ -205,7 +234,7 @@ async function displaySortedEvents(auth, timeMin, timeMax) {
   const events = await listEvents(auth, timeMin, timeMax); // イベントの取得を待つ
   const keywordEvents = await searchKeywordEvents(events, args[1]); // キーワード検索を待つ
 
-  displayEvents(keywordEvents); // 検索結果を表示
+  displayEventsMarkdown(keywordEvents); // 検索結果を表示
 }
 
 async function listCalendars(auth) {
@@ -400,7 +429,7 @@ switch (args[0]){
       endDate = getOneMonthLater(startDate);
       if (!args[1]) {
         listEvents(auth, startDate, endDate).then((events) => {
-          displayEvents(events);
+          displayEventsMarkdown(events);
         });
       } else {
       displaySortedEvents(auth, startDate, endDate);
@@ -435,9 +464,31 @@ switch (args[0]){
         endDate = toLocalISOString(today_end);
       }
       listEvents(auth, startDate, endDate).then((events) => {
-        displayEvents(events);
+        displayEventsMarkdown(events);
       });
 
     }).catch(console.error);
     break;
+
+    case 'show':
+        const current_Year = new Date().getFullYear();
+        if (args.length === 3) {
+            startDate = parseDateString(args[1], current_Year);
+            endDate = parseDateString(args[2], current_Year);
+            if (endDate < startDate) {
+                endDate = parseDateString(args[2], current_Year + 1);
+            }
+        }
+
+        authorize().then((auth) => {
+            if (args.length === 1) {
+                startDate = toLocalISOString();
+                endDate = toLocalISOString(today_end);
+            }
+            allEvents(auth, startDate, endDate).then((events) => {
+                displayEvents(events);
+            });
+
+        }).catch(console.error);
+        break;
   }

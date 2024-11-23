@@ -47,7 +47,8 @@ ln -s path/to/Gcal.js/cldr cldr
 | `cldr 01/01 12/31` | イベントの取得（指定期間） | `cldr 01/01 12/31` |
 | `cldr add` | イベントの追加 | `cldr add` |
 | `cldr rm` | イベントの削除 | `cldr rm` |
-| `cldr md` | イベントの表示 (markdown) | `cldr md` |
+| `cldr md` | イベントの表示 (markdown形式) | `cldr md` |
+| `cldr show` | イベントの表示  | `cldr show` |
 
 
 ### コマンドの詳細
