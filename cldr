@@ -16,6 +16,8 @@ elif [ $first == "nm" ] && [ -z "$second" ]; then
   node index.js nm
 elif [ $first == "add" ]; then
   node index.js add
+elif [ $first == "rm" ]; then
+  node index.js rm
 elif [ $first == "delete" ]; then
   node index.js delete 
 elif [ $first == "md" ]; then
