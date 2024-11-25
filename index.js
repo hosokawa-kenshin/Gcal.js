@@ -188,15 +188,33 @@ async function allEvents(auth, timeMin, timeMax) {
         }
     }
 
-    // 開始時間でソート
     allEventsList.sort((a, b) => a.start - b.start);
 
     return allEventsList;
 }
 
+// vim風の移動 (j, k) のキーイベントを設定する関数
+function setupVimKeysForTable(table, screen, focusbackto) {
+    screen.key(['j', 'k', 'h'], (ch, key) => {
+        if (screen.focused === table.rows) { 
+            if (ch === 'j') {
+                table.rows.down(); 
+            } else if (ch === 'k') {
+                table.rows.up(); 
+            } else if (ch === 'h') {
+                if (focusbackto) {
+                    table.rows.select(0);
+                    focusbackto.focus();
+                }
+            }
+            screen.render();
+
+        }
+    });
+}
 
 async function displayEvents(events) {
-    // Blessedスクリーンを初期化
+
     const screen = blessed.screen({
         smartCSR: true,
         title: 'Google Calendar Events',
@@ -235,7 +253,7 @@ async function displayEvents(events) {
         height: '100%',
         border: { type: 'line', fg: 'cyan' },
         columnSpacing: 1,
-        columnWidth: [20, 20, 50], // 各カラムの幅
+        columnWidth: [20, 20, 50], 
         style: {
             header: {bold: true},
         }
@@ -301,7 +319,6 @@ async function displayEvents(events) {
 
     let ignoreFocusEvent = false;
 
-
     table1.rows.on('focus', () =>{
         if (ignoreFocusEvent) return;
 
@@ -325,46 +342,14 @@ async function displayEvents(events) {
         screen.render();
     });
 
-    table2.key('h', () =>{
-        table1.focus();
-        screen.render();
-    })
+    setupVimKeysForTable(table1, screen, null);
+    setupVimKeysForTable(table2, screen, table1);
 
-    // キーボードの入力に対応
     table1.focus();
     screen.key(['escape', 'q', 'C-c'], () => process.exit(0));
 
-    // スクリーンをレンダリング
     screen.render();
 }
-
-
-
-//async function displayEvents(events){
-//  events.forEach(event => {
-//    const startDate = event.start;
-//    const month = startDate.getMonth() + 1;
-//    const day = startDate.getDate();
-//
-//    const hours = String(startDate.getHours()).padStart(2, '0');
-//    const minutes = String(startDate.getMinutes()).padStart(2, '0');
-//
-//    let endDate = event.end || null; // 終了時刻がある場合
-//    let endHours = '';
-//    let endMinutes = '';
-//
-//    if (endDate) {
-//      endHours = String(endDate.getHours()).padStart(2, '0');
-//      endMinutes = String(endDate.getMinutes()).padStart(2, '0');
-//    }
-//      const formattedEvent = endDate
-//          ? `+ (${month}/${day}) ${hours}:${minutes}-${endHours}:${endMinutes} ${event.summary}`
-//          : `+ (${month}/${day}) ${hours}:${minutes} ${event.summary}`;
-//
-//
-//      console.log(formattedEvent);
-//  });
-//}
 
 // display events in markdown format
 async function displayEventsMarkdown(events){
