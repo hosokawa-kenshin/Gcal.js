@@ -9,6 +9,7 @@ const { prompt } = require('enquirer');
 const {type} = require('os');
 const blessed = require('blessed');
 const contrib = require('blessed-contrib');
+const {container} = require('googleapis/build/src/apis/container');
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -221,6 +222,7 @@ async function displayEvents(events) {
         fullUnicode: true,
     });
 
+
     const table1 = contrib.table({
         keys: true,
         fg: 'white',
@@ -258,6 +260,53 @@ async function displayEvents(events) {
             header: {bold: true},
         }
     });
+
+    const modalBox = blessed.box({
+        top: 'center',
+        left: 'center',
+        width: '50%',
+        height: '30%',
+        border: { type: 'line', fg: 'yellow' },
+        label: 'Event Details',
+        content: '',
+        style: {
+            bg: 'black',
+            fg: 'white',
+        },
+        hidden: true,
+    });
+
+    const inputBox = blessed.textbox({
+        top: 'center',
+        left: 4,
+        width: '80%',
+        height: 3,
+        border: { type: 'line', fg: 'white' },
+        label: 'Commandline',
+        style: {
+            bg: 'black',
+            fg: 'white',
+        },
+        inputOnFocus: true, // フォーカス時に入力を許可
+        hidden: true
+    });
+
+    const list = blessed.list({
+        parent: modalBox,
+        top: 2,
+        left: 1,
+        width: '100%-2',
+        height: '100%-4',
+        items: ['Option 1', 'Option 2', 'Option 3'],
+        style: {
+            fg: 'white',
+            bg: 'black',
+            selected: { fg: 'black', bg: 'green' }
+        },
+        mouse: true,
+        keys: true,
+    });
+
 
     // イベントデータをフォーマットしてテーブルに渡す
     const formattedEvents = events.map((event) => {
@@ -311,9 +360,13 @@ async function displayEvents(events) {
         screen.render();
     }
 
+
     // テーブルをスクリーンに追加
     screen.append(table1);
     screen.append(table2);
+
+    //screen.append(modalBox);
+    screen.append(inputBox);
 
     updateTable2(0); 
 
@@ -342,11 +395,43 @@ async function displayEvents(events) {
         screen.render();
     });
 
+
+    inputBox.on('submit', (value) => {
+        const command = (value || '').trim().toLowerCase();
+
+        if (command == 'add') {
+            screen.append(modalBox);
+            modalBox.setContent('Calendar category');
+            modalBox.show();
+            inputBox.hide();
+            screen.render();
+        }
+
+        inputBox.clearValue();
+        inputBox.show();
+        screen.render();
+    })
+
     setupVimKeysForTable(table1, screen, null);
     setupVimKeysForTable(table2, screen, table1);
 
     table1.focus();
-    screen.key(['escape', 'q', 'C-c'], () => process.exit(0));
+
+    screen.key(['space'], () => {
+        inputBox.show();
+        inputBox.focus();
+        screen.render();
+
+    });
+
+
+    // モーダルを閉じるキー
+    screen.key(['escape'], () => {
+        inputContainer.hide();
+        screen.render();
+    });
+
+    screen.key(['q', 'C-c'], () => process.exit(0));
 
     screen.render();
 }
