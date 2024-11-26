@@ -283,7 +283,7 @@ async function displayEvents(auth, events) {
         height: '100%',
         border: { type: 'line', fg: 'cyan' },
         columnSpacing: 1,
-        columnWidth: [20, 20, 50], 
+        columnWidth: [20, 20, 50],
         style: {
             header: {bold: true},
         }
@@ -356,7 +356,7 @@ async function displayEvents(auth, events) {
             height: 3,
             label: 'Event Title',
             border: { type: 'line', fg: 'white' },
-            inputOnFocus: true, 
+            inputOnFocus: true,
             mouse: true,
         }),
         date: blessed.textbox({
@@ -366,7 +366,7 @@ async function displayEvents(auth, events) {
             height: 3,
             label: 'Date (YYYY-MM-DD)',
             border: { type: 'line', fg: 'white' },
-            inputOnFocus: true, 
+            inputOnFocus: true,
             mouse: true,
         }),
         startTime: blessed.textbox({
@@ -376,7 +376,7 @@ async function displayEvents(auth, events) {
             height: 3,
             label: 'Start Time (HH:mm)',
             border: { type: 'line', fg: 'white' },
-            inputOnFocus: true, 
+            inputOnFocus: true,
             mouse: true,
         }),
         endTime: blessed.textbox({
@@ -386,7 +386,7 @@ async function displayEvents(auth, events) {
             height: 3,
             label: 'End Time (HH:mm)',
             border: { type: 'line', fg: 'white' },
-            inputOnFocus: true, 
+            inputOnFocus: true,
             mouse: true,
         }),
     };
@@ -474,7 +474,7 @@ async function displayEvents(auth, events) {
     screen.append(inputBox);
     screen.append(formBox);
 
-    updateTable2(0); 
+    updateTable2(0);
 
     let ignoreFocusEvent = false;
 
