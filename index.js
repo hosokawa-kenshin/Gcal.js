@@ -78,7 +78,7 @@ function parseDateString(dateStr, year) {
 }
 
 function convertToDateTime(dateString, timeString) {
-    const [year, month, day] = dateString.split('/').map(Number);
+    const [year, month, day] = dateString.split('-').map(Number);
     const [hours, minutes] = timeString.split(':').map(Number);
     const now = new Date();
     now.setFullYear(year, month - 1, day);
@@ -159,6 +159,10 @@ async function allEvents(auth, timeMin, timeMax) {
     let allEventsList = [];
 
     const calendars = await listCalendars(auth);
+    const calendarInfoMap = calendars.reduce((map, calendar) => {
+        map[calendar.id] = calendar.summary; // カレンダーIDとその名前を対応付け
+        return map;
+    }, {});
     const calendarIDs = calendars.map(calendar => calendar.id);
 
     for (const calendarId of calendarIDs) {
@@ -181,6 +185,7 @@ async function allEvents(auth, timeMin, timeMax) {
                         end: new Date(event.end.dateTime || event.end.date),
                         summary: event.summary,
                         calendarId: calendarId,
+                        calendarName: calendarInfoMap[calendarId] || 'Unknown Calendar',
                     }))
                 );
             }
@@ -191,30 +196,53 @@ async function allEvents(auth, timeMin, timeMax) {
 
     allEventsList.sort((a, b) => a.start - b.start);
 
+    console.log(allEventsList);
     return allEventsList;
 }
 
 // vim風の移動 (j, k) のキーイベントを設定する関数
-function setupVimKeysForTable(table, screen, focusbackto) {
+function setupVimKeysForNavigation(widget, screen, focusbackto) {
     screen.key(['j', 'k', 'h'], (ch, key) => {
-        if (screen.focused === table.rows) { 
+        if (screen.focused === widget) {
             if (ch === 'j') {
-                table.rows.down(); 
+                if (widget.rows) {
+                    widget.rows.down(); // table の場合
+                } else if (widget.down) {
+                    widget.down(); // list の場合
+                }
             } else if (ch === 'k') {
-                table.rows.up(); 
+                if (widget.rows) {
+                    widget.rows.up(); // table の場合
+                } else if (widget.up) {
+                    widget.up(); // list の場合
+                }
             } else if (ch === 'h') {
                 if (focusbackto) {
-                    table.rows.select(0);
+                    if (widget.rows) {
+                        widget.rows.select(0); // table の場合
+                    } else if (widget.select) {
+                        widget.select(0); // list の場合
+                    }
                     focusbackto.focus();
                 }
             }
             screen.render();
-
         }
     });
 }
 
-async function displayEvents(events) {
+async function displayEvents(auth, events) {
+
+    const calendarNames = Array.from(
+        new Set(events.map(event => event.calendarName))
+    );
+
+    const calendarIDs = Array.from(
+        new Set(events.map(event => event.calendarId))
+    );
+
+    console.log(calendarIDs);
+
 
     const screen = blessed.screen({
         smartCSR: true,
@@ -236,7 +264,7 @@ async function displayEvents(events) {
         height: '100%',
         border: { type: 'line', fg: 'cyan' },
         columnSpacing: 1,
-        columnWidth: [6, 12, 50], // 各カラムの幅
+        columnWidth: [15, 15, 50], // 各カラムの幅
         style: {
             header: {bold: true},
         }
@@ -267,7 +295,7 @@ async function displayEvents(events) {
         width: '50%',
         height: '30%',
         border: { type: 'line', fg: 'yellow' },
-        label: 'Event Details',
+        label: 'Add command',
         content: '',
         style: {
             bg: 'black',
@@ -278,8 +306,8 @@ async function displayEvents(events) {
 
     const inputBox = blessed.textbox({
         top: 'center',
-        left: 4,
-        width: '80%',
+        left: 'center',
+        width: '60%',
         height: 3,
         border: { type: 'line', fg: 'white' },
         label: 'Commandline',
@@ -291,48 +319,125 @@ async function displayEvents(events) {
         hidden: true
     });
 
+    // カレンダを選択するlist
     const list = blessed.list({
-        parent: modalBox,
-        top: 2,
-        left: 1,
-        width: '100%-2',
-        height: '100%-4',
-        items: ['Option 1', 'Option 2', 'Option 3'],
+        //parent: modalBox,
+        top: 'center',
+        left: 'center',
+        width: '50%',
+        height: '30%',
+        items: calendarNames,
+        border: { type: 'line', fg: 'yellow' },
         style: {
             fg: 'white',
             bg: 'black',
             selected: { fg: 'black', bg: 'green' }
         },
+        hidden: true,
         mouse: true,
         keys: true,
     });
 
+    const formBox = blessed.box({
+        top: 0,
+        left: '50%',
+        width: '50%',
+        height: '100%',
+        label: 'Add Event',
+        border: { type: 'line', fg: 'cyan' },
+        hidden: true,
+    });
+
+    const formFields = {
+        title: blessed.textbox({
+            top: 2,
+            left: 2,
+            width: '90%-4',
+            height: 3,
+            label: 'Event Title',
+            border: { type: 'line', fg: 'white' },
+            inputOnFocus: true, 
+            mouse: true,
+        }),
+        date: blessed.textbox({
+            top: 6,
+            left: 2,
+            width: '90%-4',
+            height: 3,
+            label: 'Date (YYYY-MM-DD)',
+            border: { type: 'line', fg: 'white' },
+            inputOnFocus: true, 
+            mouse: true,
+        }),
+        startTime: blessed.textbox({
+            top: 10,
+            left: 2,
+            width: '90%-4',
+            height: 3,
+            label: 'Start Time (HH:mm)',
+            border: { type: 'line', fg: 'white' },
+            inputOnFocus: true, 
+            mouse: true,
+        }),
+        endTime: blessed.textbox({
+            top: 14,
+            left: 2,
+            width: '90%-4',
+            height: 3,
+            label: 'End Time (HH:mm)',
+            border: { type: 'line', fg: 'white' },
+            inputOnFocus: true, 
+            mouse: true,
+        }),
+    };
+
+
+    Object.values(formFields).forEach((field) => formBox.append(field));
+
+
+    // イベントを日付ごとにグループ化
+    function groupEventsByDate(events) {
+        return events.reduce((grouped, event) => {
+            const dateKey = event.start.toISOString().split('T')[0]; // YYYY-MM-DD形式の日付
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = [];
+            }
+            grouped[dateKey].push(event);
+            return grouped;
+        }, {});
+    }
+
 
     // イベントデータをフォーマットしてテーブルに渡す
-    const formattedEvents = events.map((event) => {
-        const startDate = event.start;
-        const month = String(startDate.getMonth() + 1).padStart(2, '0');
-        const day = String(startDate.getDate()).padStart(2, '0');
-        const hours = String(startDate.getHours()).padStart(2, '0');
-        const minutes = String(startDate.getMinutes()).padStart(2, '0');
+    function formatGroupedEvents(events) {
+        const groupedEvents = groupEventsByDate(events);
+        const formattedData = [];
 
-        let endDate = event.end || null;
-        let endHours = '';
-        let endMinutes = '';
+        Object.keys(groupedEvents)
+            .sort() // 日付順にソート
+            .forEach((dateKey) => {
+                // セクションヘッダー（例: "2024-11-25"）
+                formattedData.push([`[${dateKey}]`, '', '']); // 空のカラムを埋める
 
-        if (endDate) {
-            endHours = String(endDate.getHours()).padStart(2, '0');
-            endMinutes = String(endDate.getMinutes()).padStart(2, '0');
-        }
+                groupedEvents[dateKey].forEach((event) => {
+                    const startTime = event.start
+                        .toTimeString()
+                        .slice(0, 5); // HH:mm形式
+                    const endTime = event.end
+                        ? event.end.toTimeString().slice(0, 5)
+                        : '';
+                    const time = endTime ? `${startTime}-${endTime}` : startTime;
+                    const summary = event.summary;
+                    const calendarName = `[${event.calendarName}]`;
 
-        const date = `${month}/${day}`;
-        const time = endDate
-            ? `${hours}:${minutes}-${endHours}:${endMinutes}`
-            : `${hours}:${minutes}`;
-        const summary = event.summary;
+                    formattedData.push(['', time, `${summary} ${calendarName}`]); // 1行のイベント
+                });
+            });
 
-        return [date, time,  summary];
-    });
+        return formattedData;
+    }
+
+    const formattedEvents = formatGroupedEvents(events);
 
     table1.setData({
         headers: ['Date', 'Time', 'Event'],
@@ -360,13 +465,14 @@ async function displayEvents(events) {
         screen.render();
     }
 
-
     // テーブルをスクリーンに追加
     screen.append(table1);
     screen.append(table2);
 
     //screen.append(modalBox);
+    screen.append(list);
     screen.append(inputBox);
+    screen.append(formBox);
 
     updateTable2(0); 
 
@@ -400,20 +506,37 @@ async function displayEvents(events) {
         const command = (value || '').trim().toLowerCase();
 
         if (command == 'add') {
-            screen.append(modalBox);
-            modalBox.setContent('Calendar category');
-            modalBox.show();
+            //list.setItems(calendarNames);
+
+            //screen.append(modalBox);
+            //modalBox.setContent('Calendar category');
+            //modalBox.show();
+            list.show();
+            list.focus();
             inputBox.hide();
             screen.render();
         }
 
         inputBox.clearValue();
-        inputBox.show();
         screen.render();
+    });
+
+    let selectedCalendarId = null;
+
+    list.on('select', (item, index) => {
+        list.hide();
+        const selectedCalendar = calendarNames[index];
+        selectedCalendarId = calendarIDs[index];
+
+        formBox.setLabel(`Add Event - ${selectedCalendar}`);
+        formBox.show();
+        screen.render();
+        formFields.title.focus();
     })
 
-    setupVimKeysForTable(table1, screen, null);
-    setupVimKeysForTable(table2, screen, table1);
+    setupVimKeysForNavigation(table1.rows, screen, null);
+    setupVimKeysForNavigation(table2.rows, screen, table1);
+    setupVimKeysForNavigation(list, screen, null);
 
     table1.focus();
 
@@ -424,12 +547,81 @@ async function displayEvents(events) {
 
     });
 
-
-    // モーダルを閉じるキー
-    screen.key(['escape'], () => {
-        inputContainer.hide();
-        screen.render();
+    Object.values(formFields).forEach((field, index, fields) => {
+        field.on('submit', () => {
+            const nextField = fields[(index + 1) % fields.length]; // 次のフィールドを取得（最後の場合は最初に戻る）
+            nextField.focus(); // 次のフィールドにフォーカス
+            screen.render();   // 画面を更新
+        });
     });
+
+
+    screen.key(['C-s'], () => {
+        formBox.hide();
+    // 現在の入力内容を取得
+    const title = formFields.title.getValue().trim();
+    const date = formFields.date.getValue().trim();
+    const startTime = formFields.startTime.getValue().trim();
+    const endTime = formFields.endTime.getValue().trim();
+
+    // 入力がすべて揃っているか確認
+    if (!title || !date || !startTime || !endTime) {
+        // 必要な情報が足りない場合はエラーメッセージを表示
+        inputBox.setContent('Error: All fields must be filled in.');
+        inputBox.show();
+        inputBox.focus();
+        screen.render();
+        return;
+    }
+
+    // カレンダにイベントを登録（ここでは仮の登録処理）
+    const event = {
+        summary: title,
+        start: {
+            dateTime: convertToDateTime(date, startTime).toISOString(),
+        },
+        end: {
+            dateTime: convertToDateTime(date, endTime).toISOString(),
+        },
+    };
+
+    const calendar = google.calendar({version: 'v3', auth});
+
+    calendar.events.insert({
+        calendarId: selectedCalendarId,
+        resource: event,
+    }, (err, res) => {
+        if (err) return console.error('The API returned an error: ' + err);
+    }
+    );
+
+
+    // 登録後、フォームをクリア
+    Object.values(formFields).forEach(field => field.clearValue());
+    formFields.title.focus(); // 最初のフィールドにフォーカス
+
+    // ユーザーに通知（仮の方法）
+    inputBox.setContent('Event successfully registered!');
+    inputBox.show();
+    inputBox.focus();
+    screen.render();
+    setTimeout(() => {
+        inputBox.hide();
+        screen.render();
+    }, 2000); // 2秒後に通知を非表示にする
+});
+
+
+    screen.key(['escape'], () => {
+        // カーソルが当たっているウィジェットを取得
+    const focusedElement = screen.focused;
+
+    // フォーカスされている要素を閉じる（隠す）
+    if (focusedElement && typeof focusedElement.hide === 'function') {
+        focusedElement.hide();
+        screen.render(); // 画面更新
+    }
+});
 
     screen.key(['q', 'C-c'], () => process.exit(0));
 
@@ -703,7 +895,7 @@ switch (args[0]){
                 endDate = toLocalISOString(today_end);
             }
             allEvents(auth, startDate, endDate).then((events) => {
-                displayEvents(events);
+                displayEvents(auth, events);
             });
 
         }).catch(console.error);
