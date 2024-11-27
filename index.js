@@ -500,6 +500,25 @@ async function displayEvents(auth, events) {
     //    screen.render();
     //});
 
+    async function updateTable(auth, table) {
+        const timeMin = new Date().toISOString(); // 現在時刻を取得
+        const timeMax = getOneMonthLater(timeMin); // 1か月後の時刻を取得
+
+        // イベントリストを再取得
+        const events = await allEvents(auth, timeMin, timeMax);
+
+        // イベントをテーブル形式に変換
+        const formattedEvents = formatGroupedEvents(events);
+
+        // テーブルにデータをセット
+        table.setData({
+            headers: ['Date', 'Time', 'Event'],
+            data: formattedEvents,
+        });
+
+    // 画面を再描画
+        table.screen.render();
+    }
 
     inputBox.on('submit', (value) => {
         const command = (value || '').trim().toLowerCase();
@@ -587,7 +606,6 @@ async function displayEvents(auth, events) {
         return;
     }
 
-    // カレンダにイベントを登録（ここでは仮の登録処理）
     const event = {
         summary: title,
         start: {
@@ -602,11 +620,10 @@ async function displayEvents(auth, events) {
     calendar.events.insert({
         calendarId: selectedCalendarId,
         resource: event,
-    }, (err, res) => {
+    }, async(err, res) => {
         if (err) return console.error('The API returned an error: ' + err);
-    }
-    );
 
+    await updateTable(auth, table1);
 
     // 登録後、フォームをクリア
     Object.values(formFields).forEach(field => field.clearValue());
@@ -617,9 +634,11 @@ async function displayEvents(auth, events) {
     inputBox.focus();
     screen.render();
     setTimeout(() => {
+        inputBox.setContent('');
         inputBox.hide();
         screen.render();
     }, 2000); // 2秒後に通知を非表示にする
+    });
 });
 
 
@@ -902,8 +921,8 @@ switch (args[0]){
 
         authorize().then((auth) => {
             if (args.length === 0) {
-                startDate = toLocalISOString();
-                endDate = toLocalISOString(today_end);
+                startDate = new Date().toISOString();
+                endDate = getOneMonthLater(startDate);
             }
             allEvents(auth, startDate, endDate).then((events) => {
                 displayEvents(auth, events);
