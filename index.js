@@ -236,11 +236,11 @@ async function displayEvents(auth, events) {
     const calendars = await listCalendars(auth);
 
     const calendarNames = Array.from(
-        new Set(calendars.map(event => event.summary))
+        new Set(calendars.map(calendar=> calendar.summary))
     );
 
     const calendarIDs = Array.from(
-        new Set(calendars.map(event => event.id))
+        new Set(calendars.map(calendar=> calendar.id))
     );
 
     const screen = blessed.screen({
@@ -286,21 +286,6 @@ async function displayEvents(auth, events) {
         style: {
             header: {bold: true},
         }
-    });
-
-    const modalBox = blessed.box({
-        top: 'center',
-        left: 'center',
-        width: '50%',
-        height: '30%',
-        border: { type: 'line', fg: 'yellow' },
-        label: 'Add command',
-        content: '',
-        style: {
-            bg: 'black',
-            fg: 'white',
-        },
-        hidden: true,
     });
 
     const inputBox = blessed.textbox({
@@ -546,19 +531,6 @@ async function displayEvents(auth, events) {
                 process.exit(0);
         }
 
-        //if (command == 'add') {
-        //    //list.setItems(calendarNames);
-        //
-        //    //screen.append(modalBox);
-        //    //modalBox.setContent('Calendar category');
-        //    //modalBox.show();
-        //    list.show();
-        //    list.focus();
-        //    inputBox.hide();
-        //    screen.render();
-        //}
-
-
         inputBox.clearValue();
         screen.render();
     });
@@ -580,6 +552,7 @@ async function displayEvents(auth, events) {
                 break;
             
             case 'rm':
+                // TODO: rm に対応した処理を書く
                 formBox.setLabel(`Rm Event - ${selectedCalendar}`);
                 formBox.show();
                 screen.render();
