@@ -156,8 +156,6 @@ async function listEvents(auth, timeMin, timeMax) {
 async function allEvents(auth, timeMin, timeMax) {
     const calendar = google.calendar({ version: 'v3', auth });
 
-    let allEventsList = [];
-
     const calendars = await listCalendars(auth);
     const calendarInfoMap = calendars.reduce((map, calendar) => {
         map[calendar.id] = calendar.summary; // カレンダーIDとその名前を対応付け
@@ -165,9 +163,10 @@ async function allEvents(auth, timeMin, timeMax) {
     }, {});
     const calendarIDs = calendars.map(calendar => calendar.id);
 
-    for (const calendarId of calendarIDs) {
+    // カレンダーごとのリクエストを並列で実行
+    const eventPromises = calendarIDs.map(async calendarId => {
         try {
-            const res =  await calendar.events.list({
+            const res = await calendar.events.list({
                 calendarId: calendarId,
                 timeMin: timeMin,
                 timeMax: timeMax,
@@ -176,24 +175,24 @@ async function allEvents(auth, timeMin, timeMax) {
             });
 
             const events = res.data.items || [];
-            if (events.length > 0) {
-                // イベント情報を統一フォーマットで追加
-                allEventsList = allEventsList.concat(
-                    events.map(event => ({
-                        id: event.id,
-                        start: new Date(event.start.dateTime || event.start.date),
-                        end: new Date(event.end.dateTime || event.end.date),
-                        summary: event.summary,
-                        calendarId: calendarId,
-                        calendarName: calendarInfoMap[calendarId] || 'Unknown Calendar',
-                    }))
-                );
-            }
+            return events.map(event => ({
+                id: event.id,
+                start: new Date(event.start.dateTime || event.start.date),
+                end: new Date(event.end.dateTime || event.end.date),
+                summary: event.summary,
+                calendarId: calendarId,
+                calendarName: calendarInfoMap[calendarId] || 'Unknown Calendar',
+            }));
         } catch (error) {
             console.error(`Error fetching events for calendar ${calendarId}:`, error.message);
+            return []; // エラー時は空の配列を返す
         }
-    }
+    });
 
+    // すべてのイベントをまとめて取得
+    const allEventsList = (await Promise.all(eventPromises)).flat();
+
+    // ソートして返す
     allEventsList.sort((a, b) => a.start - b.start);
 
     return allEventsList;
@@ -232,12 +231,16 @@ function setupVimKeysForNavigation(widget, screen, focusbackto) {
 
 async function displayEvents(auth, events) {
 
+    
+    const calendar = google.calendar({version: 'v3', auth});
+    const calendars = await listCalendars(auth);
+
     const calendarNames = Array.from(
-        new Set(events.map(event => event.calendarName))
+        new Set(calendars.map(calendar=> calendar.summary))
     );
 
     const calendarIDs = Array.from(
-        new Set(events.map(event => event.calendarId))
+        new Set(calendars.map(calendar=> calendar.id))
     );
 
     const screen = blessed.screen({
@@ -283,21 +286,6 @@ async function displayEvents(auth, events) {
         style: {
             header: {bold: true},
         }
-    });
-
-    const modalBox = blessed.box({
-        top: 'center',
-        left: 'center',
-        width: '50%',
-        height: '30%',
-        border: { type: 'line', fg: 'yellow' },
-        label: 'Add command',
-        content: '',
-        style: {
-            bg: 'black',
-            fg: 'white',
-        },
-        hidden: true,
     });
 
     const inputBox = blessed.textbox({
@@ -441,62 +429,83 @@ async function displayEvents(auth, events) {
     });
 
 
-    function updateTable2(index) {
-
-        const data = formattedEvents[index];
-        const details = [
-            [`Date: ${data[0]}`],
-            [`Time: ${data[1]}`],
-            [''],
-            [`Event: ${data[2]}`],
-        ];
-
-        table2.setData({
-            headers: ['Details'],
-            data: details,
-        });
-
-        //table2.select(0);
-
-        screen.render();
-    }
+    //function updateTable2(index) {
+    //
+    //    const data = formattedEvents[index];
+    //    const details = [
+    //        [`Date: ${data[0]}`],
+    //        [`Time: ${data[1]}`],
+    //        [''],
+    //        [`Event: ${data[2]}`],
+    //    ];
+    //
+    //    table2.setData({
+    //        headers: ['Details'],
+    //        data: details,
+    //    });
+    //
+    //    //table2.select(0);
+    //
+    //    screen.render();
+    //}
 
     // テーブルをスクリーンに追加
     screen.append(table1);
-    screen.append(table2);
+    //screen.append(table2);
 
     //screen.append(modalBox);
     screen.append(list);
     screen.append(inputBox);
     screen.append(formBox);
 
-    updateTable2(0);
+    //updateTable2(0);
 
-    let ignoreFocusEvent = false;
+    //let ignoreFocusEvent = false;
+    //
+    //table1.rows.on('focus', () =>{
+    //    if (ignoreFocusEvent) return;
+    //
+    //    ignoreFocusEvent = true;
+    //
+    //    const selectedIndex = table1.rows.selected;
+    //    updateTable2(selectedIndex);
+    //
+    //    setTimeout(() => {
+    //        ignoreFocusEvent = false;
+    //    }, 50);
+    //
+    //});
+    //
+    //
+    //table1.rows.on('select', () => {
+    //    const selectedIndex = table1.rows.selected;
+    //    updateTable2(selectedIndex);
+    //
+    //    table2.focus();
+    //    screen.render();
+    //});
 
-    table1.rows.on('focus', () =>{
-        if (ignoreFocusEvent) return;
+    async function updateTable(auth, table) {
+        const timeMin = new Date().toISOString(); // 現在時刻を取得
+        const timeMax = getOneMonthLater(timeMin); // 1か月後の時刻を取得
 
-        ignoreFocusEvent = true;
+        // イベントリストを再取得
+        const events = await allEvents(auth, timeMin, timeMax);
 
-        const selectedIndex = table1.rows.selected;
-        updateTable2(selectedIndex);
+        // イベントをテーブル形式に変換
+        const formattedEvents = formatGroupedEvents(events);
 
-        setTimeout(() => {
-            ignoreFocusEvent = false;
-        }, 50);
+        // テーブルにデータをセット
+        table.setData({
+            headers: ['Date', 'Time', 'Event'],
+            data: formattedEvents,
+        });
 
-    });
+    // 画面を再描画
+        table.screen.render();
+    }
 
-
-    table1.rows.on('select', () => {
-        const selectedIndex = table1.rows.selected;
-        updateTable2(selectedIndex);
-
-        table2.focus();
-        screen.render();
-    });
-
+    let selectedCommand = null;
 
     inputBox.on('submit', (value) => {
         const command = (value || '').trim().toLowerCase();
@@ -504,28 +513,23 @@ async function displayEvents(auth, events) {
 
         switch(command) {
             case 'add':
+                selectedCommand = 'add';
                 list.show();
                 list.focus();
                 inputBox.hide();
                 screen.render();
                 break;
 
+            case 'rm':
+                selectedCommand = 'rm';
+                list.show();
+                list.focus();
+                inputBox.hide();
+                screen.render();
+                break;
             case 'exit', 'e':
                 process.exit(0);
         }
-
-        //if (command == 'add') {
-        //    //list.setItems(calendarNames);
-        //
-        //    //screen.append(modalBox);
-        //    //modalBox.setContent('Calendar category');
-        //    //modalBox.show();
-        //    list.show();
-        //    list.focus();
-        //    inputBox.hide();
-        //    screen.render();
-        //}
-
 
         inputBox.clearValue();
         screen.render();
@@ -533,15 +537,27 @@ async function displayEvents(auth, events) {
 
     let selectedCalendarId = null;
 
+
     list.on('select', (item, index) => {
         list.hide();
         const selectedCalendar = calendarNames[index];
         selectedCalendarId = calendarIDs[index];
-
-        formBox.setLabel(`Add Event - ${selectedCalendar}`);
-        formBox.show();
-        screen.render();
-        formFields.title.focus();
+        
+        switch(selectedCommand){
+            case 'add': 
+                formBox.setLabel(`Add Event - ${selectedCalendar}`);
+                formBox.show();
+                screen.render();
+                formFields.title.focus();
+                break;
+            
+            case 'rm':
+                // TODO: rm に対応した処理を書く
+                formBox.setLabel(`Rm Event - ${selectedCalendar}`);
+                formBox.show();
+                screen.render();
+                break;
+        }
     })
 
     setupVimKeysForNavigation(table1.rows, screen, null);
@@ -584,7 +600,6 @@ async function displayEvents(auth, events) {
         return;
     }
 
-    // カレンダにイベントを登録（ここでは仮の登録処理）
     const event = {
         summary: title,
         start: {
@@ -595,16 +610,14 @@ async function displayEvents(auth, events) {
         },
     };
 
-    const calendar = google.calendar({version: 'v3', auth});
 
     calendar.events.insert({
         calendarId: selectedCalendarId,
         resource: event,
-    }, (err, res) => {
+    }, async(err, res) => {
         if (err) return console.error('The API returned an error: ' + err);
-    }
-    );
 
+    await updateTable(auth, table1);
 
     // 登録後、フォームをクリア
     Object.values(formFields).forEach(field => field.clearValue());
@@ -615,9 +628,11 @@ async function displayEvents(auth, events) {
     inputBox.focus();
     screen.render();
     setTimeout(() => {
+        inputBox.setContent('');
         inputBox.hide();
         screen.render();
     }, 2000); // 2秒後に通知を非表示にする
+    });
 });
 
 
@@ -900,8 +915,8 @@ switch (args[0]){
 
         authorize().then((auth) => {
             if (args.length === 0) {
-                startDate = toLocalISOString();
-                endDate = toLocalISOString(today_end);
+                startDate = new Date().toISOString();
+                endDate = getOneMonthLater(startDate);
             }
             allEvents(auth, startDate, endDate).then((events) => {
                 displayEvents(auth, events);
