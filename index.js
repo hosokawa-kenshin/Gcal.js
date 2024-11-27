@@ -196,7 +196,6 @@ async function allEvents(auth, timeMin, timeMax) {
 
     allEventsList.sort((a, b) => a.start - b.start);
 
-    console.log(allEventsList);
     return allEventsList;
 }
 
@@ -240,9 +239,6 @@ async function displayEvents(auth, events) {
     const calendarIDs = Array.from(
         new Set(events.map(event => event.calendarId))
     );
-
-    console.log(calendarIDs);
-
 
     const screen = blessed.screen({
         smartCSR: true,
