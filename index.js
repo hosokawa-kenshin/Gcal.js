@@ -156,8 +156,6 @@ async function listEvents(auth, timeMin, timeMax) {
 async function allEvents(auth, timeMin, timeMax) {
     const calendar = google.calendar({ version: 'v3', auth });
 
-    let allEventsList = [];
-
     const calendars = await listCalendars(auth);
     const calendarInfoMap = calendars.reduce((map, calendar) => {
         map[calendar.id] = calendar.summary; // カレンダーIDとその名前を対応付け
@@ -165,9 +163,10 @@ async function allEvents(auth, timeMin, timeMax) {
     }, {});
     const calendarIDs = calendars.map(calendar => calendar.id);
 
-    for (const calendarId of calendarIDs) {
+    // カレンダーごとのリクエストを並列で実行
+    const eventPromises = calendarIDs.map(async calendarId => {
         try {
-            const res =  await calendar.events.list({
+            const res = await calendar.events.list({
                 calendarId: calendarId,
                 timeMin: timeMin,
                 timeMax: timeMax,
@@ -176,24 +175,24 @@ async function allEvents(auth, timeMin, timeMax) {
             });
 
             const events = res.data.items || [];
-            if (events.length > 0) {
-                // イベント情報を統一フォーマットで追加
-                allEventsList = allEventsList.concat(
-                    events.map(event => ({
-                        id: event.id,
-                        start: new Date(event.start.dateTime || event.start.date),
-                        end: new Date(event.end.dateTime || event.end.date),
-                        summary: event.summary,
-                        calendarId: calendarId,
-                        calendarName: calendarInfoMap[calendarId] || 'Unknown Calendar',
-                    }))
-                );
-            }
+            return events.map(event => ({
+                id: event.id,
+                start: new Date(event.start.dateTime || event.start.date),
+                end: new Date(event.end.dateTime || event.end.date),
+                summary: event.summary,
+                calendarId: calendarId,
+                calendarName: calendarInfoMap[calendarId] || 'Unknown Calendar',
+            }));
         } catch (error) {
             console.error(`Error fetching events for calendar ${calendarId}:`, error.message);
+            return []; // エラー時は空の配列を返す
         }
-    }
+    });
 
+    // すべてのイベントをまとめて取得
+    const allEventsList = (await Promise.all(eventPromises)).flat();
+
+    // ソートして返す
     allEventsList.sort((a, b) => a.start - b.start);
 
     return allEventsList;
@@ -232,12 +231,16 @@ function setupVimKeysForNavigation(widget, screen, focusbackto) {
 
 async function displayEvents(auth, events) {
 
+    
+    const calendar = google.calendar({version: 'v3', auth});
+    const calendars = await listCalendars(auth);
+
     const calendarNames = Array.from(
-        new Set(events.map(event => event.calendarName))
+        new Set(calendars.map(event => event.summary))
     );
 
     const calendarIDs = Array.from(
-        new Set(events.map(event => event.calendarId))
+        new Set(calendars.map(event => event.id))
     );
 
     const screen = blessed.screen({
@@ -441,61 +444,61 @@ async function displayEvents(auth, events) {
     });
 
 
-    function updateTable2(index) {
-
-        const data = formattedEvents[index];
-        const details = [
-            [`Date: ${data[0]}`],
-            [`Time: ${data[1]}`],
-            [''],
-            [`Event: ${data[2]}`],
-        ];
-
-        table2.setData({
-            headers: ['Details'],
-            data: details,
-        });
-
-        //table2.select(0);
-
-        screen.render();
-    }
+    //function updateTable2(index) {
+    //
+    //    const data = formattedEvents[index];
+    //    const details = [
+    //        [`Date: ${data[0]}`],
+    //        [`Time: ${data[1]}`],
+    //        [''],
+    //        [`Event: ${data[2]}`],
+    //    ];
+    //
+    //    table2.setData({
+    //        headers: ['Details'],
+    //        data: details,
+    //    });
+    //
+    //    //table2.select(0);
+    //
+    //    screen.render();
+    //}
 
     // テーブルをスクリーンに追加
     screen.append(table1);
-    screen.append(table2);
+    //screen.append(table2);
 
     //screen.append(modalBox);
     screen.append(list);
     screen.append(inputBox);
     screen.append(formBox);
 
-    updateTable2(0);
+    //updateTable2(0);
 
-    let ignoreFocusEvent = false;
-
-    table1.rows.on('focus', () =>{
-        if (ignoreFocusEvent) return;
-
-        ignoreFocusEvent = true;
-
-        const selectedIndex = table1.rows.selected;
-        updateTable2(selectedIndex);
-
-        setTimeout(() => {
-            ignoreFocusEvent = false;
-        }, 50);
-
-    });
-
-
-    table1.rows.on('select', () => {
-        const selectedIndex = table1.rows.selected;
-        updateTable2(selectedIndex);
-
-        table2.focus();
-        screen.render();
-    });
+    //let ignoreFocusEvent = false;
+    //
+    //table1.rows.on('focus', () =>{
+    //    if (ignoreFocusEvent) return;
+    //
+    //    ignoreFocusEvent = true;
+    //
+    //    const selectedIndex = table1.rows.selected;
+    //    updateTable2(selectedIndex);
+    //
+    //    setTimeout(() => {
+    //        ignoreFocusEvent = false;
+    //    }, 50);
+    //
+    //});
+    //
+    //
+    //table1.rows.on('select', () => {
+    //    const selectedIndex = table1.rows.selected;
+    //    updateTable2(selectedIndex);
+    //
+    //    table2.focus();
+    //    screen.render();
+    //});
 
 
     inputBox.on('submit', (value) => {
@@ -595,7 +598,6 @@ async function displayEvents(auth, events) {
         },
     };
 
-    const calendar = google.calendar({version: 'v3', auth});
 
     calendar.events.insert({
         calendarId: selectedCalendarId,
