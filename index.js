@@ -520,18 +520,28 @@ async function displayEvents(auth, events) {
         table.screen.render();
     }
 
+    let selectedCommand = null;
+
     inputBox.on('submit', (value) => {
         const command = (value || '').trim().toLowerCase();
 
 
         switch(command) {
             case 'add':
+                selectedCommand = 'add';
                 list.show();
                 list.focus();
                 inputBox.hide();
                 screen.render();
                 break;
 
+            case 'rm':
+                selectedCommand = 'rm';
+                list.show();
+                list.focus();
+                inputBox.hide();
+                screen.render();
+                break;
             case 'exit', 'e':
                 process.exit(0);
         }
@@ -555,15 +565,26 @@ async function displayEvents(auth, events) {
 
     let selectedCalendarId = null;
 
+
     list.on('select', (item, index) => {
         list.hide();
         const selectedCalendar = calendarNames[index];
         selectedCalendarId = calendarIDs[index];
-
-        formBox.setLabel(`Add Event - ${selectedCalendar}`);
-        formBox.show();
-        screen.render();
-        formFields.title.focus();
+        
+        switch(selectedCommand){
+            case 'add': 
+                formBox.setLabel(`Add Event - ${selectedCalendar}`);
+                formBox.show();
+                screen.render();
+                formFields.title.focus();
+                break;
+            
+            case 'rm':
+                formBox.setLabel(`Rm Event - ${selectedCalendar}`);
+                formBox.show();
+                screen.render();
+                break;
+        }
     })
 
     setupVimKeysForNavigation(table1.rows, screen, null);
