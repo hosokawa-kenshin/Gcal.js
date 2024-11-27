@@ -196,7 +196,6 @@ async function allEvents(auth, timeMin, timeMax) {
 
     allEventsList.sort((a, b) => a.start - b.start);
 
-    console.log(allEventsList);
     return allEventsList;
 }
 
@@ -241,9 +240,6 @@ async function displayEvents(auth, events) {
         new Set(events.map(event => event.calendarId))
     );
 
-    console.log(calendarIDs);
-
-
     const screen = blessed.screen({
         smartCSR: true,
         title: 'Google Calendar Events',
@@ -283,7 +279,7 @@ async function displayEvents(auth, events) {
         height: '100%',
         border: { type: 'line', fg: 'cyan' },
         columnSpacing: 1,
-        columnWidth: [20, 20, 50], 
+        columnWidth: [20, 20, 50],
         style: {
             header: {bold: true},
         }
@@ -356,7 +352,7 @@ async function displayEvents(auth, events) {
             height: 3,
             label: 'Event Title',
             border: { type: 'line', fg: 'white' },
-            inputOnFocus: true, 
+            inputOnFocus: true,
             mouse: true,
         }),
         date: blessed.textbox({
@@ -366,7 +362,7 @@ async function displayEvents(auth, events) {
             height: 3,
             label: 'Date (YYYY-MM-DD)',
             border: { type: 'line', fg: 'white' },
-            inputOnFocus: true, 
+            inputOnFocus: true,
             mouse: true,
         }),
         startTime: blessed.textbox({
@@ -376,7 +372,7 @@ async function displayEvents(auth, events) {
             height: 3,
             label: 'Start Time (HH:mm)',
             border: { type: 'line', fg: 'white' },
-            inputOnFocus: true, 
+            inputOnFocus: true,
             mouse: true,
         }),
         endTime: blessed.textbox({
@@ -386,7 +382,7 @@ async function displayEvents(auth, events) {
             height: 3,
             label: 'End Time (HH:mm)',
             border: { type: 'line', fg: 'white' },
-            inputOnFocus: true, 
+            inputOnFocus: true,
             mouse: true,
         }),
     };
@@ -474,7 +470,7 @@ async function displayEvents(auth, events) {
     screen.append(inputBox);
     screen.append(formBox);
 
-    updateTable2(0); 
+    updateTable2(0);
 
     let ignoreFocusEvent = false;
 
@@ -505,17 +501,31 @@ async function displayEvents(auth, events) {
     inputBox.on('submit', (value) => {
         const command = (value || '').trim().toLowerCase();
 
-        if (command == 'add') {
-            //list.setItems(calendarNames);
 
-            //screen.append(modalBox);
-            //modalBox.setContent('Calendar category');
-            //modalBox.show();
-            list.show();
-            list.focus();
-            inputBox.hide();
-            screen.render();
+        switch(command) {
+            case 'add':
+                list.show();
+                list.focus();
+                inputBox.hide();
+                screen.render();
+                break;
+
+            case 'exit', 'e':
+                process.exit(0);
         }
+
+        //if (command == 'add') {
+        //    //list.setItems(calendarNames);
+        //
+        //    //screen.append(modalBox);
+        //    //modalBox.setContent('Calendar category');
+        //    //modalBox.show();
+        //    list.show();
+        //    list.focus();
+        //    inputBox.hide();
+        //    screen.render();
+        //}
+
 
         inputBox.clearValue();
         screen.render();
@@ -600,7 +610,6 @@ async function displayEvents(auth, events) {
     Object.values(formFields).forEach(field => field.clearValue());
     formFields.title.focus(); // 最初のフィールドにフォーカス
 
-    // ユーザーに通知（仮の方法）
     inputBox.setContent('Event successfully registered!');
     inputBox.show();
     inputBox.focus();
@@ -623,7 +632,7 @@ async function displayEvents(auth, events) {
     }
 });
 
-    screen.key(['q', 'C-c'], () => process.exit(0));
+    screen.key(['C-c'], () => process.exit(0));
 
     screen.render();
 }
