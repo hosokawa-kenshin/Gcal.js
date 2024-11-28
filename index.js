@@ -80,7 +80,7 @@ class Event {
   constructor(id, start, end, summary, calendarId, calendarName) {
     this.id = id;
     this.start = start;
-    this.start = end;
+    this.end = end;
     this.summary = summary;
     this.calendarId = calendarId;
     this.calendarName = calendarName;
@@ -171,6 +171,13 @@ async function authorize() {
     return client;
 }
 
+function getOneMonthLater(startDate) {
+    const date = new Date(startDate);
+    date.setMonth(date.getMonth() + 1);
+    return date;
+}
+
+
 /**
   * Parse date string and return Date object.
   *
@@ -204,6 +211,7 @@ async function authorize() {
   * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
   */
 async function fetchCalendars(auth) {
+    console.log("called fetchCalendars");
   const calendar = google.calendar({version: 'v3', auth});
   const res = await calendar.calendarList.list();
   const calendars = res.data.items;
@@ -307,13 +315,14 @@ function displayEventsMarkdown(events){
 
 async function displayEvents(auth, events) {
 
-
     const calendar = google.calendar({version: 'v3', auth});
     const calendars = await fetchCalendars(auth);
+    console.log("hi");
 
     const calendarNames = Array.from(
         new Set(calendars.map(calendar=> calendar.summary))
     );
+
 
     const calendarIDs = Array.from(
         new Set(calendars.map(calendar=> calendar.id))
@@ -455,49 +464,32 @@ async function displayEvents(auth, events) {
     Object.values(formFields).forEach((field) => formBox.append(field));
 
 
-    // イベントを日付ごとにグループ化
     function groupEventsByDate(events) {
-        return events.reduce((grouped, event) => {
-            const dateKey = event.start.toISOString().split('T')[0]; // YYYY-MM-DD形式の日付
-            if (!grouped[dateKey]) {
-                grouped[dateKey] = [];
-            }
-            grouped[dateKey].push(event);
-            return grouped;
+        return events.reduce((acc, event) => {
+            // イベントの日付を取得
+
+            const date = event.start.toLocalISOString().split('T')[0];
+
+            // 日付ごとにイベントをグループ化
+            if (!acc[date]) acc[date] = [];
+            acc[date].push(event)
+            return acc;
         }, {});
     }
 
+    // イベントデータを日付ごとにグループ化
 
-    // イベントデータをフォーマットしてテーブルに渡す
-    function formatGroupedEvents(events) {
-        const groupedEvents = groupEventsByDate(events);
-        const formattedData = [];
+    const groupedEvents = groupEventsByDate(events);
 
-        Object.keys(groupedEvents)
-            .sort() // 日付順にソート
-            .forEach((dateKey) => {
-                // セクションヘッダー（例: "2024-11-25"）
-                formattedData.push([`[${dateKey}]`, '', '']); // 空のカラムを埋める
+    const formattedEvents = Object.entries(groupedEvents).flatMap(([date, events]) =>
+        events.map(event => [
+            date, // 日付
+            `${event.start} - ${event.end}`, // 時間範囲
+            event.summary || 'No Title', // イベントタイトル（なければ 'No Title'）
+        ])
+    );
 
-                groupedEvents[dateKey].forEach((event) => {
-                    const startTime = event.start
-                        .toTimeString()
-                        .slice(0, 5); // HH:mm形式
-                    const endTime = event.end
-                        ? event.end.toTimeString().slice(0, 5)
-                        : '';
-                    const time = endTime ? `${startTime}-${endTime}` : startTime;
-                    const summary = event.summary;
-                    const calendarName = `[${event.calendarName}]`;
 
-                    formattedData.push(['', time, `${summary} ${calendarName}`]); // 1行のイベント
-                });
-            });
-
-        return formattedData;
-    }
-
-    const formattedEvents = formatGroupedEvents(events);
 
     table1.setData({
         headers: ['Date', 'Time', 'Event'],
@@ -505,25 +497,6 @@ async function displayEvents(auth, events) {
     });
 
 
-    //function updateTable2(index) {
-    //
-    //    const data = formattedEvents[index];
-    //    const details = [
-    //        [`Date: ${data[0]}`],
-    //        [`Time: ${data[1]}`],
-    //        [''],
-    //        [`Event: ${data[2]}`],
-    //    ];
-    //
-    //    table2.setData({
-    //        headers: ['Details'],
-    //        data: details,
-    //    });
-    //
-    //    //table2.select(0);
-    //
-    //    screen.render();
-    //}
 
     // テーブルをスクリーンに追加
     screen.append(table1);
@@ -534,52 +507,26 @@ async function displayEvents(auth, events) {
     screen.append(inputBox);
     screen.append(formBox);
 
-    //updateTable2(0);
 
-    //let ignoreFocusEvent = false;
-    //
-    //table1.rows.on('focus', () =>{
-    //    if (ignoreFocusEvent) return;
-    //
-    //    ignoreFocusEvent = true;
-    //
-    //    const selectedIndex = table1.rows.selected;
-    //    updateTable2(selectedIndex);
-    //
-    //    setTimeout(() => {
-    //        ignoreFocusEvent = false;
-    //    }, 50);
-    //
-    //});
-    //
-    //
-    //table1.rows.on('select', () => {
-    //    const selectedIndex = table1.rows.selected;
-    //    updateTable2(selectedIndex);
-    //
-    //    table2.focus();
-    //    screen.render();
-    //});
+async function updateTable(auth, table) {
+    const timeMin = new Date(); // 現在時刻を取得
+    const timeMax = getOneMonthLater(timeMin); // 1か月後の時刻を取得
 
-    async function updateTable(auth, table) {
-        const timeMin = new Date().toISOString(); // 現在時刻を取得
-        const timeMax = getOneMonthLater(timeMin); // 1か月後の時刻を取得
+    // イベントリストを再取得
+    const events = await fetchEvents(auth, null, timeMin, timeMax);
 
-        // イベントリストを再取得
-        const events = await fetchEvents(auth, null, timeMin, timeMax);
+    // イベントをテーブル形式に変換
+    const formattedEvents = formattedEvents(events);
 
-        // イベントをテーブル形式に変換
-        const formattedEvents = formatGroupedEvents(events);
-
-        // テーブルにデータをセット
-        table.setData({
-            headers: ['Date', 'Time', 'Event'],
-            data: formattedEvents,
-        });
+    // テーブルにデータをセット
+    table.setData({
+        headers: ['Date', 'Time', 'Event'],
+        data: formattedEvents,
+    });
 
     // 画面を再描画
-        table.screen.render();
-    }
+    table.screen.render();
+}
 
     let selectedCommand = null;
 
@@ -961,8 +908,7 @@ async function main(args) {
       else {
         startDate = new Date(today);
         startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(today);
-        endDate.setHours(24, 0, 0, 0);
+        endDate = getOneMonthLater(today);
       }
 
       // Get events
@@ -970,7 +916,7 @@ async function main(args) {
 
       // Sort events by start date, and display them.
       events.sort((a, b) => a.start - b.start);
-      displayEvents(events);
+      await displayEvents(auth, events);
   }
 }
 
