@@ -1,15 +1,15 @@
 import { addEvent } from '../commands/add.js';
 import { displayEventsMarkdown } from '../commands/markdown.js';
 
-export function handleInput(input, screen) {
-//   面白そうな書き方発見
-//   const logBox = screen.children.find(child => child.options.label === 'Calendar Log');
+export function handleInput(auth, inputBox, screen, calendars, events) {
 
-  const [command, ...args] = input.trim().split(/\s+/);
+  const [command, ...args] = inputBox.trim().split(/\s+/);
 
   switch (command) {
     case 'add':
-      addEvent(args.join(' '));
+      addEvent(auth, screen, calendars);
+      break;
+    case 'rm':
       break;
     case 'md':
       // コマンドラインからの呼び出しと違うからどう呼び出すか要検討
@@ -18,6 +18,8 @@ export function handleInput(input, screen) {
       break;
     case 'help':
       break;
+    case 'exit', 'e':
+      process.exit(0);
     default:
       break;
     }

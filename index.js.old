@@ -304,7 +304,6 @@ function displayEventsMarkdown(events){
     console.log(formattedEvent);
   });
 }
-// -----------------------------------ここまで移植
 
 function groupEventsByDate(events) {
     return events.reduce((grouped, event) => {
@@ -554,7 +553,7 @@ function displayEvents_old(auth, events, calendars) {
     screen.append(list);
     screen.append(inputBox);
     screen.append(formBox);
-
+// -----------------------------------ここまで移植
     async function updateTable(auth, table) {
         const timeMin = new Date().toISOString(); // 現在時刻を取得
         const timeMax = getOneMonthLater(timeMin); // 1か月後の時刻を取得

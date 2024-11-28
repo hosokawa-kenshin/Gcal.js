@@ -1,4 +1,4 @@
-class Event {
+export class Event {
     /**
     * Create Event instance.
     *
@@ -49,3 +49,5 @@ class Event {
       return (startStr.includes(keyword) || this.summary.includes(keyword));
     }
 }
+
+export default Event;

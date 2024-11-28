@@ -5,7 +5,7 @@
   * @param {String} dateStr (e.g., "1/1", "01/01")
   * @return {Date}
   */
-  function parseDateWithYear(year, dateStr) {
+  export function parseDateWithYear(year, dateStr) {
     const d = new Date(dateStr);
     d.setFullYear(year);
     return d;
@@ -18,7 +18,7 @@
   * @param {String} timeStr (e.g., "12:00", "00:00")
   * @return {Date}
   */
-  function convertToDateTime(dateStr, timeStr) {
+  export function convertToDateTime(dateStr, timeStr) {
     const d = new Date(dateStr);
     const [hours, minutes] = timeStr.split(':').map(Number);
     d.setHours(hours, minutes, 0, 0);
