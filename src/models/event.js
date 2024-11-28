@@ -13,7 +13,7 @@ export class Event {
     constructor(id, start, end, summary, calendarId, calendarName) {
       this.id = id;
       this.start = start;
-      this.start = end;
+      this.end = end;
       this.summary = summary;
       this.calendarId = calendarId;
       this.calendarName = calendarName;
