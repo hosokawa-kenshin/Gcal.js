@@ -1,4 +1,10 @@
 {
+  "name": "calendar-cli",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node bin/index.js"
+  },
   "dependencies": {
     "@google-cloud/local-auth": "^2.1.0",
     "blessed": "^0.1.81",
