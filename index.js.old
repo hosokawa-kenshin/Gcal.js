@@ -304,12 +304,97 @@ function displayEventsMarkdown(events){
     console.log(formattedEvent);
   });
 }
+// -----------------------------------ここまで移植
 
-async function displayEvents(auth, events) {
+function groupEventsByDate(events) {
+    return events.reduce((grouped, event) => {
+        const dateKey = event.start.toISOString().split('T')[0];
+        if (!grouped[dateKey]) {
+            grouped[dateKey] = [];
+        }
+        grouped[dateKey].push(event);
+        return grouped;
+    }, {});
+}
 
+function formatGroupedEvents(events) {
+    const groupedEvents = groupEventsByDate(events);
+    const formattedData = [];
+
+    Object.keys(groupedEvents)
+        .sort()
+        .forEach((dateKey) => {
+            formattedData.push([`[${dateKey}]`, '', '']);
+
+            groupedEvents[dateKey].forEach((event) => {
+                const startTime = event.start
+                    .toTimeString()
+                    .slice(0, 5);
+                const endTime = event.end
+                    ? event.end.toTimeString().slice(0, 5)
+                    : '';
+                const time = endTime ? `${startTime}-${endTime}` : startTime;
+                const summary = event.summary;
+                const calendarName = `[${event.calendarName}]`;
+
+                formattedData.push(['', time, `${summary} ${calendarName}`]);
+            });
+        });
+    return formattedData;
+}
+
+function displayEvents(auth, events, calendars) {
+    try {
+        const calendarNames = Array.from(
+            new Set(calendars.map(calendar => calendar.summary))
+        );
+
+        const screen = blessed.screen({
+            smartCSR: true,
+            title: 'Google Calendar Events',
+            fullUnicode: true,
+        });
+
+        const table1 = contrib.table({
+            keys: true,
+            fg: 'white',
+            selectedFg: 'white',
+            selectedBg: 'blue',
+            interactive: true,
+            label: 'Upcoming Events',
+            top: 0,
+            left: 0,
+            width: '50%',
+            height: '100%',
+            border: { type: 'line', fg: 'cyan' },
+            columnSpacing: 1,
+            columnWidth: [15, 15, 50],
+            style: {
+                header: {bold: true},
+            }
+        });
+
+        const formattedEvents = formatGroupedEvents(events);
+        console.log("Formatted Events:", formattedEvents);
+
+        table1.setData({
+            headers: ['Date', 'Time', 'Event'],
+            data: formattedEvents,
+        });
+        // screen.append(table1);
+        // table1.screen.render();
+        screen.render();
+    } catch (err) {
+        console.error("Error in displayEvents:", err);
+    } finally {
+    }
+}
+
+// -----------------------------------
+
+function displayEvents_old(auth, events, calendars) {
 
     const calendar = google.calendar({version: 'v3', auth});
-    const calendars = await fetchCalendars(auth);
 
     const calendarNames = Array.from(
         new Set(calendars.map(calendar=> calendar.summary))
@@ -451,79 +536,15 @@ async function displayEvents(auth, events) {
         }),
     };
 
-
     Object.values(formFields).forEach((field) => formBox.append(field));
 
-
-    // イベントを日付ごとにグループ化
-    function groupEventsByDate(events) {
-        return events.reduce((grouped, event) => {
-            const dateKey = event.start.toISOString().split('T')[0]; // YYYY-MM-DD形式の日付
-            if (!grouped[dateKey]) {
-                grouped[dateKey] = [];
-            }
-            grouped[dateKey].push(event);
-            return grouped;
-        }, {});
-    }
-
-
     // イベントデータをフォーマットしてテーブルに渡す
-    function formatGroupedEvents(events) {
-        const groupedEvents = groupEventsByDate(events);
-        const formattedData = [];
-
-        Object.keys(groupedEvents)
-            .sort() // 日付順にソート
-            .forEach((dateKey) => {
-                // セクションヘッダー（例: "2024-11-25"）
-                formattedData.push([`[${dateKey}]`, '', '']); // 空のカラムを埋める
-
-                groupedEvents[dateKey].forEach((event) => {
-                    const startTime = event.start
-                        .toTimeString()
-                        .slice(0, 5); // HH:mm形式
-                    const endTime = event.end
-                        ? event.end.toTimeString().slice(0, 5)
-                        : '';
-                    const time = endTime ? `${startTime}-${endTime}` : startTime;
-                    const summary = event.summary;
-                    const calendarName = `[${event.calendarName}]`;
-
-                    formattedData.push(['', time, `${summary} ${calendarName}`]); // 1行のイベント
-                });
-            });
-
-        return formattedData;
-    }
-
     const formattedEvents = formatGroupedEvents(events);
 
     table1.setData({
         headers: ['Date', 'Time', 'Event'],
         data: formattedEvents,
     });
-
-
-    //function updateTable2(index) {
-    //
-    //    const data = formattedEvents[index];
-    //    const details = [
-    //        [`Date: ${data[0]}`],
-    //        [`Time: ${data[1]}`],
-    //        [''],
-    //        [`Event: ${data[2]}`],
-    //    ];
-    //
-    //    table2.setData({
-    //        headers: ['Details'],
-    //        data: details,
-    //    });
-    //
-    //    //table2.select(0);
-    //
-    //    screen.render();
-    //}
 
     // テーブルをスクリーンに追加
     screen.append(table1);
@@ -533,33 +554,6 @@ async function displayEvents(auth, events) {
     screen.append(list);
     screen.append(inputBox);
     screen.append(formBox);
-
-    //updateTable2(0);
-
-    //let ignoreFocusEvent = false;
-    //
-    //table1.rows.on('focus', () =>{
-    //    if (ignoreFocusEvent) return;
-    //
-    //    ignoreFocusEvent = true;
-    //
-    //    const selectedIndex = table1.rows.selected;
-    //    updateTable2(selectedIndex);
-    //
-    //    setTimeout(() => {
-    //        ignoreFocusEvent = false;
-    //    }, 50);
-    //
-    //});
-    //
-    //
-    //table1.rows.on('select', () => {
-    //    const selectedIndex = table1.rows.selected;
-    //    updateTable2(selectedIndex);
-    //
-    //    table2.focus();
-    //    screen.render();
-    //});
 
     async function updateTable(auth, table) {
         const timeMin = new Date().toISOString(); // 現在時刻を取得
@@ -639,8 +633,6 @@ async function displayEvents(auth, events) {
     setupVimKeysForNavigation(table1.rows, screen, null);
     setupVimKeysForNavigation(table2.rows, screen, table1);
     setupVimKeysForNavigation(list, screen, null);
-
-    table1.focus();
 
     screen.key(['space'], () => {
         inputBox.show();
@@ -967,10 +959,10 @@ async function main(args) {
 
       // Get events
       const events = await fetchEvents(auth, null, startDate, endDate)
-
+      const calendars = await fetchCalendars(auth);
       // Sort events by start date, and display them.
       events.sort((a, b) => a.start - b.start);
-      displayEvents(events);
+      displayEvents(auth, events, calendars);
   }
 }
 

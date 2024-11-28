@@ -7,21 +7,21 @@ second=$2
 third=$3
 
 if [ -z "$first" ] && [ -z "$second" ]; then
-  node index.js
+  node bin/index.js
 elif [ $first == "list" ]; then
-  node index.js list
+  node bin/index.js list
 elif [ $first == "nm" ] && [ $second ]; then
-  node index.js nm $second
+  node bin/index.js nm $second
 elif [ $first == "nm" ] && [ -z "$second" ]; then
-  node index.js nm
+  node bin/index.js nm
 elif [ $first == "add" ]; then
-  node index.js add
+  node bin/index.js add
 elif [ $first == "rm" ]; then
-  node index.js rm
+  node bin/index.js rm
 elif [ $first == "delete" ]; then
-  node index.js delete 
+  node bin/index.js delete
 elif [ $first == "md" ]; then
-  node index.js md $second $third
+  node bin/index.js md $second $third
 else
-  node index.js $first $second
+  node bin/index.js $first $second
 fi
