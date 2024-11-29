@@ -1,3 +1,4 @@
+import '../src/utils/datePrototype.js';
 import { createLayout } from './ui/layout.js';
 import { handleInput } from './ui/inputHandler.js';
 import { authorize, fetchEvents, fetchCalendars, initializeCalendars} from './services/calendarService.js';
