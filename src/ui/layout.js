@@ -153,6 +153,26 @@ export function createLayout(calendars, events) {
     mouse: true,
     keys: true,
   });
+
+  const selectCalendarList = blessed.list({
+
+    top: 'center',
+    left: 'center',
+    width: '50%',
+    height: '30%',
+    items: ['rm', 'edit'],
+    label: 'Edit List',
+    border: { type: 'line', fg: 'yellow' },
+    style: {
+        fg: 'white',
+        bg: 'black',
+        selected: { fg: 'black', bg: 'green' }
+    },
+    hidden: true,
+    mouse: true,
+    keys: true,
+  });
+
   function formatItem(name, isChecked) {
     return `${isChecked ? '[x]' : '[ ]'} ${name}`;
   }
@@ -162,7 +182,7 @@ export function createLayout(calendars, events) {
     screen.render();
   });
 
-  const formBox = blessed.box({
+  const formBox = blessed.form({
     top: 0,
     left: '50%',
     width: '50%',
@@ -170,6 +190,7 @@ export function createLayout(calendars, events) {
     label: 'Add Event',
     border: { type: 'line', fg: 'cyan' },
     hidden: true,
+    keys: true,
   });
 
   const formFields = {
@@ -228,6 +249,7 @@ export function createLayout(calendars, events) {
   screen.append(inputBox);
   screen.append(list);
   screen.append(formBox);
+  screen.append(selectCalendarList);
   setupVimKeysForNavigation(leftTable.rows, screen, null);
   setupVimKeysForNavigation(rightTable.rows, screen, leftTable);
   setupVimKeysForNavigation(list, screen, null);
