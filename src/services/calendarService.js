@@ -110,12 +110,9 @@ export async function fetchCalendars(auth) {
   * @param {Date} endtime The end date of fetching events.
   * @return {Promise<Array[Event]>} List of events.
   */
-  export async function fetchEvents(auth, calendarIDs, startTime, endTime) {
+  export async function fetchEvents(auth, startTime, endTime) {
     const client = google.calendar({version: 'v3', auth});
     let calendars = await fetchCalendars(auth);
-    if (calendarIDs) {
-        calendars = calendars.filter((cal) => calendarIds.includes(cal.id))
-    }
     calendars = calendars.map((cal) => { return {id: cal.id, summary: cal.summary };});
 
     let tasks = [];

@@ -41,7 +41,7 @@ function formatGroupedEvents(events) {
 export async function updateTable(auth, table, calendars) {
   const timeMin = new Date();
   const timeMax = new Date(timeMin).nextMonth();
-  const events = await fetchEvents(auth, calendars, timeMin, timeMax);
+  const events = await fetchEvents(auth, timeMin, timeMax);
   const formattedEvents = formatGroupedEvents(events);
 
   table.setData({
@@ -132,6 +132,34 @@ export function createLayout(calendars, events) {
     hidden: true,
     mouse: true,
     keys: true,
+  });
+
+  const checkedState = new Array(calendarNames.length).fill(false);
+  const configCalendarList = blessed.list({
+    //parent: modalBox,
+    top: 'center',
+    left: 'center',
+    width: '50%',
+    height: '30%',
+    items: calendarNames,
+    label: 'Calendar List',
+    border: { type: 'line', fg: 'yellow' },
+    style: {
+        fg: 'white',
+        bg: 'black',
+        selected: { fg: 'black', bg: 'green' }
+    },
+    hidden: true,
+    mouse: true,
+    keys: true,
+  });
+  function formatItem(name, isChecked) {
+    return `${isChecked ? '[x]' : '[ ]'} ${name}`;
+  }
+  configCalendarList.on('select', (item, index) => {
+    checkedState[index] = !checkedState[index];
+    configCalendarList.setItem(index, formatItem(calendarNames[index], checkedState[index]));
+    screen.render();
   });
 
   const formBox = blessed.box({
