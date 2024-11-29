@@ -18,7 +18,7 @@ export async function runApp() {
   const auth = await authorize();
   const calendars= await initializeCalendars(auth);
 
-  const events = await fetchEvents(auth, null, startDate, endDate)
+  const events = await fetchEvents(auth, calendars, startDate, endDate)
   events.sort((a, b) => a.start - b.start);
 
   const { screen, inputBox } = createLayout(calendars, events);

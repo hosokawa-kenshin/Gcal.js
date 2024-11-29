@@ -1,6 +1,0 @@
-const calendarIds = [
-    'example@gmail.com',
-    'example@group.calendar.google.com',
-];
-  
-module.exports = calendarIds;

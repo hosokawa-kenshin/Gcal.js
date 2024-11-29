@@ -16,7 +16,6 @@ function runQuery(db, query, params = []) {
 export async function insertCalendarListToDatabase(calendars){
   const db = new sqlite3.Database("./db/Gcal.db");
   await runQuery(db, "CREATE TABLE IF NOT EXISTS Calendars (id TEXT, summary TEXT)");
-  // await db.run("CREATE TABLE IF NOT EXISTS Calendars (id TEXT, summary TEXT)");
   for (const calendar of calendars) {
     await runQuery(db, "INSERT INTO Calendars (id, summary) VALUES (?, ?)", [calendar.id, calendar.summary]);
     console.log(`Inserted ${calendar.summary} into the database.`);

@@ -38,10 +38,10 @@ function formatGroupedEvents(events) {
   return formattedData;
 }
 
-export async function updateTable(auth, table) {
+export async function updateTable(auth, table, calendars) {
   const timeMin = new Date();
   const timeMax = new Date(timeMin).nextMonth();
-  const events = await fetchEvents(auth, null, timeMin, timeMax);
+  const events = await fetchEvents(auth, calendars, timeMin, timeMax);
   const formattedEvents = formatGroupedEvents(events);
 
   table.setData({
@@ -52,8 +52,6 @@ export async function updateTable(auth, table) {
 }
 
 export function createLayout(calendars, events) {
-
-  console.log(calendars);
   const calendarNames = Array.from(
     new Set(calendars.map(calendar=> calendar.summary))
   );

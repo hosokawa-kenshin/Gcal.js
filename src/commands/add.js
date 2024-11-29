@@ -75,7 +75,7 @@ export function addEvent(auth, screen, calendars) {
     }, async(err, res) => {
       if (err) return console.error('The API returned an error: ' + err);
 
-      await updateTable(auth, leftTable);
+      await updateTable(auth, leftTable, calendars);
       Object.values(formFields).forEach(field => field.clearValue());
       formFields.title.focus();
       inputBox.setContent('Event successfully registered!');
