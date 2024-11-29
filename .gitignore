@@ -2,3 +2,6 @@ credentials.json
 token.json
 calendarIds.js
 node_modules/
+Gcal.db
+db/*
+!db/.gitkeep

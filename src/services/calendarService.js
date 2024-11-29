@@ -1,8 +1,10 @@
 import Event from '../models/event.js';
 import fs from 'fs/promises';
+import fs2 from 'fs';
 import path from 'path';
 import {authenticate} from '@google-cloud/local-auth';
 import {google} from 'googleapis';
+import {insertCalendarListToDatabase, fetchCalendarsFromDatabase} from './databaseService.js';
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -124,4 +126,19 @@ export async function fetchCalendars(auth) {
 
     const events = await Promise.all(tasks);
     return events.flat();
+  }
+
+  export async function initializeCalendars(auth) {
+    const dbPath = "./db/Gcal.db";
+    var calendars = [];
+    if (!fs2.existsSync(dbPath)) {
+      console.log("Database file does not exist. Creating a new database...");
+      calendars = await fetchCalendars(auth).then(calendars => {
+        insertCalendarListToDatabase(calendars);
+        return calendars;
+      });
+    }else{
+      calendars = await fetchCalendarsFromDatabase();
+    }
+    return calendars;
   }

@@ -1,9 +1,11 @@
 import { createLayout } from './ui/layout.js';
 import { handleInput } from './ui/inputHandler.js';
-import { authorize, fetchEvents, fetchCalendars} from './services/calendarService.js';
+import { authorize, fetchEvents, fetchCalendars, initializeCalendars} from './services/calendarService.js';
+import { insertCalendarListToDatabase, fetchCalendarsFromDatabase} from './services/databaseService.js';
+import fs from "fs";
 
 export async function runApp() {
-  console.log('running app');
+  console.log('Running app ...');
   let startDate;
   let endDate;
   let today = new Date();
@@ -12,11 +14,10 @@ export async function runApp() {
   endDate = new Date(today);
   endDate.setHours(24, 0, 0, 0);
   endDate.setDate(endDate.getDate() + 28);
-
   const auth = await authorize();
-  const events = await fetchEvents(auth, null, startDate, endDate)
-  const calendars = await fetchCalendars(auth);
+  const calendars= await initializeCalendars(auth);
 
+  const events = await fetchEvents(auth, null, startDate, endDate)
   events.sort((a, b) => a.start - b.start);
 
   const { screen, inputBox } = createLayout(calendars, events);

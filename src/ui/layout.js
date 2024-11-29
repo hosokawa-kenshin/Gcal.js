@@ -53,6 +53,7 @@ export async function updateTable(auth, table) {
 
 export function createLayout(calendars, events) {
 
+  console.log(calendars);
   const calendarNames = Array.from(
     new Set(calendars.map(calendar=> calendar.summary))
   );
