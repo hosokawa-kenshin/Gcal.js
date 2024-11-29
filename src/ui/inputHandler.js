@@ -1,5 +1,6 @@
 import { addEvent } from '../commands/add.js';
 import { displayEventsMarkdown } from '../commands/markdown.js';
+import { helpEvent } from '../commands/help.js';
 
 export function handleInput(auth, inputBox, screen, calendars, events) {
 
@@ -30,6 +31,7 @@ export function handleInput(auth, inputBox, screen, calendars, events) {
       // どちらが使いやすいか要検討
       break;
     case 'help':
+      helpEvent(screen);
       break;
     case 'exit', 'e':
       process.exit(0);

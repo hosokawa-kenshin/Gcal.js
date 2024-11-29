@@ -18,7 +18,6 @@ export function rmEvent(auth, screen, calendars){
     editCommandList.show();
     screen.rendar();
 
-    
 
 
 

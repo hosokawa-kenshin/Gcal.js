@@ -1,6 +1,7 @@
 import blessed from 'blessed';
 import contrib from 'blessed-contrib';
 import {fetchEvents} from '../services/calendarService.js';
+import {fetchCommandList} from '../services/commandService.js';
 
 import {setupVimKeysForNavigation} from './keyConfig.js';
 
@@ -8,7 +9,7 @@ function groupEventsByDate(events) {
   return events.reduce((grouped, event) => {
     const dateKey = event.start.toISOString().split('T')[0];
     if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
+      grouped[dateKey] = [];
     }
     grouped[dateKey].push(event);
       return grouped;
@@ -19,16 +20,16 @@ function formatGroupedEvents(events) {
   const groupedEvents = groupEventsByDate(events);
   const formattedData = [];
   Object.keys(groupedEvents)
-        .sort()
-        .forEach((dateKey) => {
+      .sort()
+      .forEach((dateKey) => {
     formattedData.push([`[${dateKey}]`, '', '']);
     groupedEvents[dateKey].forEach((event) => {
       const startTime = event.start
-          .toTimeString()
-          .slice(0, 5);
+        .toTimeString()
+        .slice(0, 5);
       const endTime = event.end
-          ? event.end.toTimeString().slice(0, 5)
-          : '';
+        ? event.end.toTimeString().slice(0, 5)
+        : '';
       const time = endTime ? `${startTime}-${endTime}` : startTime;
       const summary = event.summary;
       const calendarName = `[${event.calendarName}]`;
@@ -55,6 +56,8 @@ export function createLayout(calendars, events) {
   const calendarNames = Array.from(
     new Set(calendars.map(calendar=> calendar.summary))
   );
+
+  const commands = fetchCommandList();
 
   const screen = blessed.screen({
     smartCSR: true,
@@ -108,8 +111,8 @@ export function createLayout(calendars, events) {
     border: { type: 'line', fg: 'white' },
     label: 'Commandline',
     style: {
-        bg: 'black',
-        fg: 'white',
+      bg: 'black',
+      fg: 'white',
     },
     inputOnFocus: true,
     hidden: true
@@ -125,9 +128,9 @@ export function createLayout(calendars, events) {
     label: 'Calendar List',
     border: { type: 'line', fg: 'yellow' },
     style: {
-        fg: 'white',
-        bg: 'black',
-        selected: { fg: 'black', bg: 'green' }
+      fg: 'white',
+      bg: 'black',
+      selected: { fg: 'black', bg: 'green' }
     },
     hidden: true,
     mouse: true,
@@ -154,7 +157,7 @@ export function createLayout(calendars, events) {
     keys: true,
   });
 
-  const selectCalendarList = blessed.list({
+  const editCalendarCommandList = blessed.list({
 
     top: 'center',
     left: 'center',
@@ -242,6 +245,35 @@ export function createLayout(calendars, events) {
     data: formattedEvents,
   });
 
+  const commandList = blessed.list({
+    //parent: modalBox,
+    top: 'center',
+    left: 'center',
+    width: '50%',
+    height: '30%',
+    items: commands,
+    label: 'Command List',
+    border: { type: 'line', fg: 'yellow' },
+    style: {
+      fg: 'white',
+      bg: 'black',
+      selected: { fg: 'black', bg: 'green' }
+    },
+    hidden: true,
+    mouse: true,
+    keys: true,
+  });
+
+  const commandDetailsBox = blessed.box({
+    top: 0,
+    left: '50%',
+    width: '50%',
+    height: '100%',
+    label: 'Command Details',
+    border: { type: 'line', fg: 'cyan' },
+    hidden: true,
+  });
+
   Object.values(formFields).forEach((field) => formBox.append(field));
 
   screen.append(leftTable);
@@ -249,10 +281,13 @@ export function createLayout(calendars, events) {
   screen.append(inputBox);
   screen.append(list);
   screen.append(formBox);
-  screen.append(selectCalendarList);
+  screen.append(editCalendarCommandList);
+  screen.append(commandList);
+  screen.append(commandDetailsBox);
   setupVimKeysForNavigation(leftTable.rows, screen, null);
   setupVimKeysForNavigation(rightTable.rows, screen, leftTable);
   setupVimKeysForNavigation(list, screen, null);
+  setupVimKeysForNavigation(commandList, screen, null);
 
   leftTable.focus();
   console.log('Create Layout');
