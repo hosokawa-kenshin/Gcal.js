@@ -96,7 +96,6 @@ export async function fetchCalendars(auth) {
       singleEvents: true,
       orderBy: 'startTime',
     });
-
     const events = res.data.items;
     return events.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
   }
@@ -110,11 +109,8 @@ export async function fetchCalendars(auth) {
   * @param {Date} endtime The end date of fetching events.
   * @return {Promise<Array[Event]>} List of events.
   */
-  export async function fetchEvents(auth, startTime, endTime) {
+  export async function fetchEvents(auth, calendars, startTime, endTime) {
     const client = google.calendar({version: 'v3', auth});
-    let calendars = await fetchCalendars(auth);
-    calendars = calendars.map((cal) => { return {id: cal.id, summary: cal.summary };});
-
     let tasks = [];
     for (const calendar of calendars) {
       const task = fetchEventFromCalendar(client, startTime, endTime, calendar);

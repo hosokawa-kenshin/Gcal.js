@@ -41,7 +41,7 @@ function formatGroupedEvents(events) {
 export async function updateTable(auth, table, calendars) {
   const timeMin = new Date();
   const timeMax = new Date(timeMin).nextMonth();
-  const events = await fetchEvents(auth, timeMin, timeMax);
+  const events = await fetchEvents(auth, calendars, timeMin, timeMax);
   const formattedEvents = formatGroupedEvents(events);
 
   table.setData({

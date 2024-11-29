@@ -33,21 +33,41 @@ export async function insertCalendarListToDatabase(calendars){
 export async function fetchCalendarsFromDatabase(){
   const db = new sqlite3.Database("./db/Gcal.db");
 
-  let calendars = [];
-  db.each("SELECT * FROM Calendars", (err, row) => {
-    if (err) {
-      console.error("Error fetching data:", err.message);
-    } else {
-      calendars.push(new Calendar(row.id, row.summary));
-    }
+  const calendars = [];
+  await new Promise((resolve, reject) => {
+    db.each(
+      "SELECT * FROM Calendars",
+      (err, row) => {
+        if (err) {
+          console.error("Error fetching data:", err.message);
+          reject(err);
+        } else {
+          calendars.push(new Calendar(row.id, row.summary));
+          console.log("Fetched from the database:", row.summary);
+        }
+      },
+      (err, rowCount) => {
+        if (err) {
+          console.error("Error completing iteration:", err.message);
+          reject(err);
+        } else {
+          console.log(`Successfully fetched ${rowCount} calendars.`);
+          resolve();
+        }
+      }
+    );
   });
 
-  db.close((err) => {
-    if (err) {
-      console.error("Error closing database:", err.message);
-    } else {
-      console.log("Database connection closed.");
-    }
+  await new Promise((resolve, reject) => {
+    db.close((err) => {
+      if (err) {
+        console.error("Error closing database:", err.message);
+        reject(err);
+      } else {
+        console.log("Database connection closed.");
+        resolve();
+      }
+    });
   });
 
   return calendars;
