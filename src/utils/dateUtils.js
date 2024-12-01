@@ -34,7 +34,7 @@
  *
  */
  export function getDayOfWeek(year, month, day) {
-    const date = new Date(year, month - 1, day);
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return daysOfWeek[date.getDay()];
-  }
+   const date = new Date(year, month - 1, day);
+   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+   return daysOfWeek[date.getDay()];
+ }

@@ -6,6 +6,7 @@ import {setupVimKeysForNavigation} from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
 import { createLeftTable, createRightTable } from './table.js';
 import { createCalendarCheckbox } from './form.js';
+import { calendar } from 'googleapis/build/src/apis/calendar/index.js';
 
 function padAndColorDate(dateKey, color) {
   if (color === 'blue') {
@@ -74,7 +75,7 @@ export async function updateTable(auth, table, calendars) {
   const events = await fetchEvents(auth, calendars, startDate, endDate);
   events.sort((a, b) => a.start - b.start);
   const formattedEvents = formatGroupedEvents(events);
-  leftTable.setItems(formattedEvents);
+  table.setItems(formattedEvents);
   table.screen.render();
 }
 
@@ -205,8 +206,8 @@ export function createLayout(calendars, events) {
   const leftTable = createLeftTable(screen);
   const formattedEvents = formatGroupedEvents(events);
   leftTable.setItems(formattedEvents);
-
   const rightTable = createRightTable(screen);
+
   screen.append(inputBox);
   screen.append(list);
   screen.append(editCalendarCommandList);

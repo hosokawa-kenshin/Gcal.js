@@ -80,32 +80,66 @@ function getExistingFormFields(formBox) {
 }
 
 export function createCalendarCheckbox(screen){
-  const checkbox = blessed.checkbox({
+  const form = blessed.form({
     parent: screen,
+    keys: true,
+    width: '50%',
+    height: '50%',
     top: 'center',
     left: 'center',
-    width: '30%',
-    height: 3,
-    label: ' Enable Feature',
     border: { type: 'line' },
     style: {
-      fg: 'white',
-      border: { fg: 'cyan' },
-      focus: { bg: 'blue' }
-    },
+      border: { fg: 'green' }
+    }
+  });
+
+  const checkbox1 = blessed.checkbox({
+    parent: form,
+    top: 2,
+    left: 2,
+    content: 'Option 1',
+    checked: false,
+    mouse: true
+  });
+
+  const checkbox2 = blessed.checkbox({
+    parent: form,
+    top: 5,
+    left: 2,
+    content: 'Option 2',
+    checked: true,
+    mouse: true
+  });
+
+  const submitButton = blessed.button({
+    parent: form,
     mouse: true,
     keys: true,
-    hidden: false,
+    shrink: true,
+    padding: { left: 1, right: 1 },
+    top: 8,
+    left: 2,
+    name: 'submit',
+    content: 'Submit',
+    style: {
+      fg: 'white',
+      bg: 'blue',
+      focus: { bg: 'red' }
+    }
   });
 
-  checkbox.on('check', () => {
-    console.log('Checked!');
+  submitButton.on('press', () => {
+    form.submit();
   });
 
-  checkbox.on('uncheck', () => {
-    console.log('Unchecked!');
+  form.on('submit', (data) => {
+    console.log('Checkbox 1:', checkbox1.checked);
+    console.log('Checkbox 2:', checkbox2.checked);
   });
 
-  screen.append(checkbox);
-  return checkbox;
+  form.append(checkbox1);
+  form.append(checkbox2);
+  form.append(submitButton);
+  screen.append(form);
+  return form;
 }

@@ -1,6 +1,7 @@
 import { addEvent } from '../commands/add.js';
 import { displayEventsMarkdown } from '../commands/markdown.js';
 import { helpEvent } from '../commands/help.js';
+import { configCommand } from '../commands/config.js';
 
 export function handleInput(auth, inputBox, screen, calendars, events) {
 
@@ -19,11 +20,7 @@ export function handleInput(auth, inputBox, screen, calendars, events) {
       displayEventsMarkdown();
       break;
     case 'config':
-      // default calendars の設定
-      // 今は購読しているすべてのカレンダーの中身が見えたり，イベントを追加できたりする
-      // このコマンドでデフォルトで使用するカレンダー群を設定できるようにする
-      // 選択したカレンダーを設定ファイルを使って保存しておく
-      // 起動時設定ファイルがなければ自動的に設定画面を表示する
+      configCommand(auth, screen);
       break;
     case 'jump':
       // Upcoming Events のカーソルの位置を指定した日にジャンプする
