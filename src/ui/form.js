@@ -78,3 +78,34 @@ function getExistingFormFields(formBox) {
     endTime: formBox.children.find(child => child.options.label === 'End Time (HH:mm)')
   };
 }
+
+export function createCalendarCheckbox(screen){
+  const checkbox = blessed.checkbox({
+    parent: screen,
+    top: 'center',
+    left: 'center',
+    width: '30%',
+    height: 3,
+    label: ' Enable Feature',
+    border: { type: 'line' },
+    style: {
+      fg: 'white',
+      border: { fg: 'cyan' },
+      focus: { bg: 'blue' }
+    },
+    mouse: true,
+    keys: true,
+    hidden: false,
+  });
+
+  checkbox.on('check', () => {
+    console.log('Checked!');
+  });
+
+  checkbox.on('uncheck', () => {
+    console.log('Unchecked!');
+  });
+
+  screen.append(checkbox);
+  return checkbox;
+}
