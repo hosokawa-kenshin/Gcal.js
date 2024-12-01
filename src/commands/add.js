@@ -71,6 +71,7 @@ export function addEvent(auth, screen, calendars) {
       setTimeout(() => {
         inputBox.setContent('');
         inputBox.hide();
+        leftTable.focus();
         screen.render();
       }, 2000);
     });

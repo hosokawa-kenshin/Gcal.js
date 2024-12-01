@@ -12,9 +12,8 @@ export async function runApp() {
   let today = new Date();
   startDate = new Date(today);
   startDate.setHours(0, 0, 0, 0);
-  endDate = new Date(today);
+  endDate = new Date(today).nextMonth().nextMonth();
   endDate.setHours(24, 0, 0, 0);
-  endDate.setDate(endDate.getDate() + 28);
   const auth = await authorize();
   const calendars= await initializeCalendars(auth);
   const events = await fetchEvents(auth, calendars, startDate, endDate);
