@@ -2,12 +2,11 @@ import blessed from 'blessed';
 import contrib from 'blessed-contrib';
 import {fetchEvents} from '../services/calendarService.js';
 import {fetchCommandList} from '../services/commandService.js';
-
 import {setupVimKeysForNavigation} from './keyConfig.js';
 
 function groupEventsByDate(events) {
   return events.reduce((grouped, event) => {
-    const dateKey = event.start.toISOString().split('T')[0];
+    const dateKey = event.start.toLocalISOString().split('T')[0];
     if (!grouped[dateKey]) {
       grouped[dateKey] = [];
     }
@@ -20,7 +19,6 @@ function formatGroupedEvents(events) {
   const groupedEvents = groupEventsByDate(events);
   const formattedData = [];
   Object.keys(groupedEvents)
-      .sort()
       .forEach((dateKey) => {
     formattedData.push([`[${dateKey}]`, '', '']);
     groupedEvents[dateKey].forEach((event) => {
@@ -40,9 +38,13 @@ function formatGroupedEvents(events) {
 }
 
 export async function updateTable(auth, table, calendars) {
-  const timeMin = new Date();
-  const timeMax = new Date(timeMin).nextMonth();
-  const events = await fetchEvents(auth, calendars, timeMin, timeMax);
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(startDate);
+  endDate.setHours(24, 0, 0, 0);
+  endDate.setDate(endDate.getDate() + 28);
+  const events = await fetchEvents(auth, calendars, startDate, endDate);
+  events.sort((a, b) => a.start - b.start);
   const formattedEvents = formatGroupedEvents(events);
 
   table.setData({
@@ -145,7 +147,7 @@ export function createLayout(calendars, events) {
     width: '50%',
     height: '30%',
     items: calendarNames,
-    label: 'Calendar List',
+    label: 'Config Calendar List',
     border: { type: 'line', fg: 'yellow' },
     style: {
         fg: 'white',
