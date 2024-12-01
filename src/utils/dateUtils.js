@@ -24,3 +24,17 @@
     d.setHours(hours, minutes, 0, 0);
     return d;
   }
+
+/**
+ * Return the day of the week.
+ *  * @param {int} year
+ *  * @param {int} month
+ *   * @param {int} day
+ *   * @return {String} (e.g., "Sunday", "Monday")
+ *
+ */
+ export function getDayOfWeek(year, month, day) {
+    const date = new Date(year, month - 1, day);
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return daysOfWeek[date.getDay()];
+  }

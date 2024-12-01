@@ -13,7 +13,9 @@ export function rmEvent(auth, screen, calendars){
   leftTable.rows.on('select', (item, index) =>{
 
 
-    const selectedEvents = leftTable.rows.getItem(index).eventData;
+    // const selectedEvents = leftTable.rows.getItem(index).eventData;
+    // leftTable の intex と events の index は一致している
+    const selectedEvents = events[index];
 
     editCommandList.show();
     screen.rendar();

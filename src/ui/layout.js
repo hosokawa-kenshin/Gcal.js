@@ -3,10 +3,25 @@ import contrib from 'blessed-contrib';
 import {fetchEvents} from '../services/calendarService.js';
 import {fetchCommandList} from '../services/commandService.js';
 import {setupVimKeysForNavigation} from './keyConfig.js';
+import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
+import { createLeftTable, createRightTable } from './table.js';
+
+function padAndColorDate(dateKey, color) {
+  if (color === 'blue') {
+    return `{blue-fg}${dateKey}{/blue-fg}`;
+  } else if (color === 'red') {
+    return `{red-fg}${dateKey}{/red-fg}`;
+  }
+  return dateKey;
+}
 
 function groupEventsByDate(events) {
   return events.reduce((grouped, event) => {
-    const dateKey = event.start.toLocalISOString().split('T')[0];
+    var dateKey = event.start.toLocalISOString().split('T')[0];
+    var year = Number(event.start.toLocalISOString().split('-')[0]);
+    var month = Number(event.start.toLocalISOString().split('-')[1]);
+    var day = parseInt(event.start.toLocalISOString().split('-')[2],10);
+    dateKey = dateKey + '(' + getDayOfWeek(year, month, day) + ')';
     if (!grouped[dateKey]) {
       grouped[dateKey] = [];
     }
@@ -18,20 +33,32 @@ function groupEventsByDate(events) {
 function formatGroupedEvents(events) {
   const groupedEvents = groupEventsByDate(events);
   const formattedData = [];
+  var beforeDateKey = null;
   Object.keys(groupedEvents)
       .forEach((dateKey) => {
-    formattedData.push([`[${dateKey}]`, '', '']);
     groupedEvents[dateKey].forEach((event) => {
-      const startTime = event.start
-        .toTimeString()
-        .slice(0, 5);
-      const endTime = event.end
-        ? event.end.toTimeString().slice(0, 5)
-        : '';
+      const startTime = event.start.toTimeString().slice(0, 5);
+      const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
       const time = endTime ? `${startTime}-${endTime}` : startTime;
       const summary = event.summary;
       const calendarName = `[${event.calendarName}]`;
-      formattedData.push(['', time, `${summary} ${calendarName}`]);
+      let coloredDate = dateKey;
+
+      if (dateKey === beforeDateKey) {
+        coloredDate = "".padEnd(dateKey.length);
+      }else{
+        const date = new Date(event.start);
+        const day = date.getDay()
+        if (day === 6) {
+          coloredDate = padAndColorDate(dateKey, 'blue');
+        } else if (day === 0) {
+          coloredDate = padAndColorDate(dateKey, 'red');
+        } else {
+          coloredDate = padAndColorDate(dateKey, 'normal');
+        }
+      }
+      beforeDateKey = dateKey;
+      formattedData.push(`${coloredDate}  ${time}  ${summary}  ${calendarName}`);
     });
   });
   return formattedData;
@@ -48,8 +75,8 @@ export async function updateTable(auth, table, calendars) {
   const formattedEvents = formatGroupedEvents(events);
 
   table.setData({
-      headers: ['Date', 'Time', 'Event'],
-      data: formattedEvents,
+    headers: ['Date', 'Time', 'Event'],
+    data: formattedEvents,
   });
   table.screen.render();
 }
@@ -65,44 +92,6 @@ export function createLayout(calendars, events) {
     smartCSR: true,
     title: 'Google Calendar Events',
     fullUnicode: true,
-  });
-
-  const leftTable = contrib.table({
-    keys: true,
-    fg: 'white',
-    selectedFg: 'white',
-    selectedBg: 'blue',
-    interactive: true,
-    label: 'Upcoming Events',
-    top: 0,
-    left: 0,
-    width: '50%',
-    height: '100%',
-    border: { type: 'line', fg: 'cyan' },
-    columnSpacing: 1,
-    columnWidth: [15, 15, 50],
-    style: {
-        header: {bold: true},
-    }
-  });
-
-  const rightTable = contrib.table({
-    keys: true,
-    fg: 'white',
-    selectedFg: 'white',
-    selectedBg: 'blue',
-    interactive: true,
-    label: 'Events summary',
-    top: 0,
-    left: '50%',
-    width: '50%',
-    height: '100%',
-    border: { type: 'line', fg: 'cyan' },
-    columnSpacing: 1,
-    columnWidth: [20, 20, 50],
-    style: {
-        header: {bold: true},
-    }
   });
 
   const inputBox = blessed.textbox({
@@ -187,66 +176,6 @@ export function createLayout(calendars, events) {
     screen.render();
   });
 
-  const formBox = blessed.form({
-    top: 0,
-    left: '50%',
-    width: '50%',
-    height: '100%',
-    label: 'Add Event',
-    border: { type: 'line', fg: 'cyan' },
-    hidden: true,
-    keys: true,
-  });
-
-  const formFields = {
-    title: blessed.textbox({
-      top: 2,
-      left: 2,
-      width: '90%-4',
-      height: 3,
-      label: 'Event Title',
-      border: { type: 'line', fg: 'white' },
-      inputOnFocus: true,
-      mouse: true,
-    }),
-    date: blessed.textbox({
-      top: 6,
-      left: 2,
-      width: '90%-4',
-      height: 3,
-      label: 'Date (YYYY-MM-DD)',
-      border: { type: 'line', fg: 'white' },
-      inputOnFocus: true,
-      mouse: true,
-    }),
-    startTime: blessed.textbox({
-      top: 10,
-      left: 2,
-      width: '90%-4',
-      height: 3,
-      label: 'Start Time (HH:mm)',
-      border: { type: 'line', fg: 'white' },
-      inputOnFocus: true,
-      mouse: true,
-    }),
-    endTime: blessed.textbox({
-      top: 14,
-      left: 2,
-      width: '90%-4',
-      height: 3,
-      label: 'End Time (HH:mm)',
-      border: { type: 'line', fg: 'white' },
-      inputOnFocus: true,
-      mouse: true,
-    }),
-  };
-
-  const formattedEvents = formatGroupedEvents(events);
-  leftTable.setData({
-    headers: ['Date', 'Time', 'Event'],
-    data: formattedEvents,
-  });
-
   const commandList = blessed.list({
     //parent: modalBox,
     top: 'center',
@@ -276,18 +205,20 @@ export function createLayout(calendars, events) {
     hidden: true,
   });
 
-  Object.values(formFields).forEach((field) => formBox.append(field));
+  const leftTable = createLeftTable(screen);
+  const formattedEvents = formatGroupedEvents(events);
+  leftTable.setItems(formattedEvents);
+  // leftTable.setData({
+  //   headers: ['Date', 'Time', 'Event'],
+  //   data: formattedEvents,
+  // });
 
-  screen.append(leftTable);
-  screen.append(rightTable);
+  const rightTable = createRightTable(screen);
   screen.append(inputBox);
   screen.append(list);
-  screen.append(formBox);
   screen.append(editCalendarCommandList);
   screen.append(commandList);
   screen.append(commandDetailsBox);
-  setupVimKeysForNavigation(leftTable.rows, screen, null);
-  setupVimKeysForNavigation(rightTable.rows, screen, leftTable);
   setupVimKeysForNavigation(list, screen, null);
   setupVimKeysForNavigation(commandList, screen, null);
 

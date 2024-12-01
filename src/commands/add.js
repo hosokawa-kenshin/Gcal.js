@@ -1,20 +1,14 @@
 import {google} from 'googleapis';
 import {updateTable} from '../ui/layout.js';
 import {convertToDateTime} from '../utils/dateUtils.js';
+import { createAddForm } from '../ui/form.js';
 
 export function addEvent(auth, screen, calendars) {
   const calendar = google.calendar({version: 'v3', auth});
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
-  const formBox = screen.children.find(child => child.options.label === 'Add Event');
   const inputBox = screen.children.find(child => child.options.label === 'Commandline');
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
-  const formFields = formBox.children.reduce((fields, child) => {
-    if (child.options.label === 'Event Title') fields.title = child;
-    else if (child.options.label === 'Date (YYYY-MM-DD)') fields.date = child;
-    else if (child.options.label === 'Start Time (HH:mm)') fields.startTime = child;
-    else fields.endTime = child;
-    return fields;
-  }, {});
+  const {formBox, formFields} = createAddForm(screen);
   var selectedCalendarId = null;
 
   const calendarNames = Array.from(
@@ -36,20 +30,14 @@ export function addEvent(auth, screen, calendars) {
     formFields.title.focus();
   })
 
-  Object.values(formFields).forEach((field, index, fields) => {
-    field.on('submit', () => {
-        const nextField = fields[(index + 1) % fields.length];
-        nextField.focus();
-        screen.render();
-    });
-  });
-
   screen.key(['C-s'], () => {
     formBox.hide();
+    screen.render();
     const title = formFields.title.getValue().trim();
     const date = formFields.date.getValue().trim();
     const startTime = formFields.startTime.getValue().trim();
     const endTime = formFields.endTime.getValue().trim();
+    Object.values(formFields).forEach(field => field.clearValue());
 
     if (!title || !date || !startTime || !endTime) {
       inputBox.setContent('Error: All fields must be filled in.');
@@ -76,8 +64,6 @@ export function addEvent(auth, screen, calendars) {
       if (err) return console.error('The API returned an error: ' + err);
 
       await updateTable(auth, leftTable, calendars);
-      Object.values(formFields).forEach(field => field.clearValue());
-      formFields.title.focus();
       inputBox.setContent('Event successfully registered!');
       inputBox.show();
       inputBox.focus();
