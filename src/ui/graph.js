@@ -31,10 +31,16 @@ export function insertDataToGraph(screen, table, eventsDataTimes) {
     const startHour = parseInt(startTime.split(':')[0]);
     const endTime = eventTime.split('-')[1];
     const endHour = parseInt(endTime.split(':')[0]);
+    const endMinute = parseInt(endTime.split(':')[1]);
     for (let i = startHour; i < endHour; i++) {
       const hour = i < 10 ? `0${i}` : `${i}`;
       const hourAgo = i+1 < 10 ? `0${i+1}` : `${i+1}`;
       filledTime[i] = [`${hour}:00-${hourAgo}:00`, '■'];
+    }
+    if (endMinute > 0) {
+      const hour = endHour < 10 ? `0${endHour}` : `${endHour}`;
+      const hourAgo = endHour+1 < 10 ? `0${endHour+1}` : `${endHour+1}`;
+      filledTime[endHour] = [`${hour}:00-${hourAgo}:00`, '■'];
     }
   });
 
