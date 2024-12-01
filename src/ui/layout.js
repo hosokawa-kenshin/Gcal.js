@@ -1,12 +1,9 @@
 import blessed from 'blessed';
-import contrib from 'blessed-contrib';
 import {fetchEvents} from '../services/calendarService.js';
 import {fetchCommandList} from '../services/commandService.js';
 import {setupVimKeysForNavigation} from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
 import { createLeftTable, createRightTable } from './table.js';
-import { createCalendarCheckbox } from './form.js';
-import { calendar } from 'googleapis/build/src/apis/calendar/index.js';
 import { createGraph, insertDataToGraph } from './graph.js';
 
 function updateGraph(screen, rightGraph, index, events) {
@@ -84,13 +81,15 @@ function formatGroupedEvents(events) {
   return formattedData;
 }
 
-export async function updateTable(auth, table, calendars) {
+export async function updateTable(auth, table, calendars, events) {
   const startDate = new Date();
   startDate.setHours(0, 0, 0, 0);
   const endDate = new Date(startDate).nextMonth().nextMonth();
   endDate.setHours(24, 0, 0, 0);
-  const events = await fetchEvents(auth, calendars, startDate, endDate);
-  events.sort((a, b) => a.start - b.start);
+  const newEvents = await fetchEvents(auth, calendars, startDate, endDate);
+  newEvents.sort((a, b) => a.start - b.start);
+  events.length = 0;
+  events.push(...newEvents);
   const formattedEvents = formatGroupedEvents(events);
   table.setItems(formattedEvents);
   table.screen.render();

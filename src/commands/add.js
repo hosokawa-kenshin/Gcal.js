@@ -3,7 +3,7 @@ import {updateTable} from '../ui/layout.js';
 import {convertToDateTime} from '../utils/dateUtils.js';
 import { createAddForm } from '../ui/form.js';
 
-export function addEvent(auth, screen, calendars) {
+export function addEvent(auth, screen, calendars, events) {
   const calendar = google.calendar({version: 'v3', auth});
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
   const inputBox = screen.children.find(child => child.options.label === 'Commandline');
@@ -63,7 +63,7 @@ export function addEvent(auth, screen, calendars) {
     }, async(err, res) => {
       if (err) return console.error('The API returned an error: ' + err);
 
-      await updateTable(auth, leftTable, calendars);
+      await updateTable(auth, leftTable, calendars, events);
       inputBox.setContent('Event successfully registered!');
       inputBox.show();
       inputBox.focus();

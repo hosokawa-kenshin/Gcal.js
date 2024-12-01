@@ -16,7 +16,7 @@ export async function runApp() {
   endDate.setHours(24, 0, 0, 0);
   const auth = await authorize();
   const calendars= await initializeCalendars(auth);
-  const events = await fetchEvents(auth, calendars, startDate, endDate);
+  var events = await fetchEvents(auth, calendars, startDate, endDate);
   events.sort((a, b) => a.start - b.start);
 
   const { screen, inputBox } = createLayout(calendars, events);

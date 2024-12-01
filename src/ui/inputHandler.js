@@ -1,5 +1,5 @@
 import { addEvent } from '../commands/add.js';
-import { displayEventsMarkdown } from '../commands/markdown.js';
+import { markdownCommand } from '../commands/markdown.js';
 import { helpEvent } from '../commands/help.js';
 import { configCommand } from '../commands/config.js';
 
@@ -9,18 +9,15 @@ export function handleInput(auth, inputBox, screen, calendars, events) {
 
   switch (command) {
     case 'add':
-      addEvent(auth, screen, calendars);
+      addEvent(auth, screen, calendars, events);
       break;
     case 'rm':
       break;
     case 'md':
-      // rask用markdown表示
-      // displayEventsMarkdownはCLIとしての呼び出しを想定している
-      // そのため，console.logを使った表示になっているため，screenを使った表示に対応する必要あり
-      displayEventsMarkdown();
+      markdownCommand(auth, screen, calendars, args);
       break;
     case 'config':
-      configCommand(auth, screen);
+      configCommand(auth, screen, calendars, events);
       break;
     case 'jump':
       // Upcoming Events のカーソルの位置を指定した日にジャンプする

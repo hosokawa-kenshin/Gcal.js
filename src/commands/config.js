@@ -3,9 +3,10 @@ import { configCalendarListInDatabase, fetchCalendarsFromDatabase } from '../ser
 import { fetchCalendars } from '../services/calendarService.js';
 import { updateTable } from '../ui/layout.js';
 
-export async function configCommand(auth, screen) {
+export async function configCommand(auth, screen, calendars, events) {
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const inputBox = screen.children.find(child => child.options.label === 'Commandline');
+  const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
   const form = blessed.form({
     parent: screen,
     top: 'center',
@@ -25,8 +26,8 @@ export async function configCommand(auth, screen) {
   });
 
   const checkboxes = [];
-  await fetchCalendars(auth).then((calendars) => {
-    calendars.forEach((calendar, index) => {
+  await fetchCalendars(auth).then((allCalendars) => {
+    allCalendars.forEach((calendar, index) => {
       const checkbox = blessed.checkbox({
         parent: form,
         top: index + 1,
@@ -45,7 +46,7 @@ export async function configCommand(auth, screen) {
 
     const submitButton = blessed.button({
       parent: form,
-      top: calendars.length + 2,
+      top: allCalendars.length + 2,
       left: 2,
       content: 'Save',
       shrink: true,
@@ -65,7 +66,10 @@ export async function configCommand(auth, screen) {
         .map(({ id }) => id);
       await configCalendarListInDatabase(selectedCalendars);
       const fetchedcalendars = await fetchCalendarsFromDatabase();
-      await updateTable(auth, leftTable, fetchedcalendars);
+      await updateTable(auth, leftTable, fetchedcalendars, events);
+      calendars.length = 0;
+      calendars.push(...fetchedcalendars);
+      calendarList.setItems(calendars.map(calendar => calendar.summary));
       inputBox.setContent('Config successfully registered!');
       inputBox.show();
       inputBox.focus();
@@ -75,7 +79,7 @@ export async function configCommand(auth, screen) {
         inputBox.hide();
         leftTable.focus();
         screen.render();
-      }, 200);
+      }, 500);
     });
 
     form.show();
