@@ -1,6 +1,7 @@
 import {fetchCommandList} from '../services/commandService.js';
 
 export function helpEvent(screen) {
+  const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const commandList = screen.children.find(child => child.options.label === 'Command List');
   const commandDetailsBox = screen.children.find(child => child.options.label === 'Command Details');
   const commands = fetchCommandList();
@@ -15,10 +16,16 @@ export function helpEvent(screen) {
     commandDetailsBox.focus();
   })
 
-  screen.key(['escape'], () => {
+  commandDetailsBox.key(['escape'], () => {
     commandDetailsBox.hide();
     commandList.show();
     commandList.focus();
+    screen.render();
+  })
+
+  commandList.key(['escape'], () => {
+    commandList.hide();
+    leftTable.focus();
     screen.render();
   });
 }
