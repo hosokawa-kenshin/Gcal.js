@@ -2,52 +2,59 @@ import blessed from 'blessed';
 import contrib from 'blessed-contrib';
 
 export function createGraph(screen) {
-  const grid = new contrib.grid({ rows: 10, cols: 12, screen: screen });
-
-  const table = grid.set(0, 6, 8, 6, contrib.table, {
-    label: 'Filled Time Graph',
-    columnWidth: [21, 21],
-    border: { type: 'line', fg: 'cyan' },
-    align: ['center', 'center'],
-    padding: { left: 0, right: 0 },
+  const table = blessed.list({
+    keys: true,
+    fg: 'white',
+    tags: true,
     selectedFg: 'green',
     selectedBg: 'black',
+    interactive: true,
+    label: 'Filled Time Graph',
+    top: 0,
+    left: '50%',
+    width: '50%',
+    height: '80%',
+    padding: { left: 2, right: 5 },
+    border: { type: 'line', fg: 'cyan' },
+    columnSpacing: 2,
   });
+  screen.append(table);
 
   return table;
 }
 
-export function insertDataToGraph(screen, table, eventsDataTimes) {
-  var filledTime=[24];
-  for (let i = 0; i < 24; i++) {
-    const hour = i < 10 ? `0${i}` : `${i}`;
-    const hourAgo = i+1 < 10 ? `0${i+1}` : `${i+1}`;
-    filledTime[i] = [`${hour}:00-${hourAgo}:00`, '-'];
+export function insertDataToGraph(screen, table, eventsDataTimes, monday) {
+  const filledTime = [];
+  for (let hour = 0; hour < 24; hour++) {
+    const hourStart = hour < 10 ? `0${hour}:00` : `${hour}:00`;
+    const hourEnd = hour + 1 < 10 ? `0${hour + 1}:00` : `${hour + 1}:00`;
+    const timeSlot = `${hourStart}-${hourEnd}`;
+    const weekData = [timeSlot];
+
+    for (let day = 0; day < 7; day++) {
+      const dayTimes = eventsDataTimes[day] || [];
+      const isFilled = dayTimes.some((eventTime) => {
+        const [start, end] = eventTime.split('-');
+        const startHour = parseInt(start.split(':')[0], 10);
+        const endHour = parseInt(end.split(':')[0], 10);
+        const endMinute = parseInt(end.split(':')[1], 10);
+        return hour >= startHour && (hour < endHour || (hour === endHour && endMinute > 0));
+      });
+      weekData.push(isFilled ? '■' : '-');
+    }
+    filledTime.push(weekData.join('     '));
   }
 
-  eventsDataTimes.forEach(time => {
-    const eventTime = time;
-    const startTime = eventTime.split('-')[0];
-    const startHour = parseInt(startTime.split(':')[0]);
-    const endTime = eventTime.split('-')[1];
-    const endHour = parseInt(endTime.split(':')[0]);
-    const endMinute = parseInt(endTime.split(':')[1]);
-    for (let i = startHour; i < endHour; i++) {
-      const hour = i < 10 ? `0${i}` : `${i}`;
-      const hourAgo = i+1 < 10 ? `0${i+1}` : `${i+1}`;
-      filledTime[i] = [`${hour}:00-${hourAgo}:00`, '■'];
-    }
-    if (endMinute > 0) {
-      const hour = endHour < 10 ? `0${endHour}` : `${endHour}`;
-      const hourAgo = endHour+1 < 10 ? `0${endHour+1}` : `${endHour+1}`;
-      filledTime[endHour] = [`${hour}:00-${hourAgo}:00`, '■'];
-    }
-  });
-
-  table.setData({
-    headers: ['Time', 'Filled'],
-    data: filledTime,
-  });
+  const firstday = monday.toLocalISOString().split('T')[0].split('-').slice(1).join('/');;
+  const secondDay = monday.addDays(1).toLocalISOString().split('T')[0].split('-').slice(1).join('/');;
+  const thirdDay = monday.addDays(2).toLocalISOString().split('T')[0].split('-').slice(1).join('/');;
+  const fourthDay = monday.addDays(3).toLocalISOString().split('T')[0].split('-').slice(1).join('/');;
+  const fifthDay = monday.addDays(4).toLocalISOString().split('T')[0].split('-').slice(1).join('/');;
+  const sixthDay = monday.addDays(5).toLocalISOString().split('T')[0].split('-').slice(1).join('/');;
+  const lastday = monday.addDays(6).toLocalISOString().split('T')[0].split('-').slice(1).join('/');;
+  const dayText = `              ${firstday} ${secondDay} ${thirdDay} ${fourthDay} ${fifthDay} ${sixthDay} ${lastday}`;
+  const headers = "   Time        Mon   Tue   Wed   Thu   Fri   {blue-fg}Sat{/blue-fg}   {red-fg}Sun{/red-fg}";
+  table.setItems([dayText, headers, ...filledTime]);
 
   screen.render();
 }

@@ -7,20 +7,38 @@ import { createLeftTable, createLogTable } from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
 
 function updateGraph(screen, rightGraph, index, events) {
-  var dateKey = events[index].start.toLocalISOString().split('T')[0];
-  var year = Number(events[index].start.toLocalISOString().split('-')[0]);
-  var month = Number(events[index].start.toLocalISOString().split('-')[1]);
-  var day = parseInt(events[index].start.toLocalISOString().split('-')[2],10);
-  dateKey = dateKey + '(' + getDayOfWeek(year, month, day) + ')';
-  var filledTime = [];
+  const currentEventDate = new Date(events[index].start);
+  const monday = new Date(currentEventDate);
+  const currentDayOfWeek = monday.getDay();
+  const offsetToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek; // 日曜なら-6、他は月曜までの差分
+  monday.setDate(monday.getDate() + offsetToMonday);
+
+  const weekDates = [];
+  for (let i = 0; i < 7; i++) {
+    const tempDate = new Date(monday);
+    tempDate.setDate(monday.getDate() + i);
+    weekDates.push(tempDate.toISOString().split('T')[0]);
+  }
+
+  const filledTime = [];
   const groupedEvents = groupEventsByDate(events);
-  groupedEvents[dateKey].forEach((event) => {
-    const startTime = event.start.toTimeString().slice(0, 5);
-    const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
-    const time = endTime ? `${startTime}-${endTime}` : startTime;
-    filledTime.push(time);
+  weekDates.forEach((dateKey) => {
+    const year = Number(dateKey.split('-')[0]);
+    const month = Number(dateKey.split('-')[1]);
+    const day = parseInt(dateKey.split('-')[2], 10);
+    const dayOfWeek = getDayOfWeek(year, month, day);
+    const formattedDateKey = dateKey + '(' + dayOfWeek + ')';
+
+    const dayEvents = groupedEvents[formattedDateKey] || [];
+    const dayTimes = dayEvents.map((event) => {
+      const startTime = event.start.toTimeString().slice(0, 5);
+      const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
+      return endTime ? `${startTime}-${endTime}` : startTime;
+    });
+
+    filledTime.push(dayTimes);
   });
-  insertDataToGraph(screen, rightGraph, filledTime);
+  insertDataToGraph(screen, rightGraph, filledTime, monday);
 }
 
 function colorDate(dateKey, color) {
