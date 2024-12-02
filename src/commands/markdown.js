@@ -10,6 +10,7 @@ import { convertToDateTime } from '../utils/dateUtils.js';
 export async function markdownCommand(auth, screen, calendars, args) {
   const inputBox = screen.children.find(child => child.options.label === 'Commandline');
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
+  const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   const eventBox = blessed.box({
     top: 'center',
     left: 'center',
@@ -60,15 +61,9 @@ export async function markdownCommand(auth, screen, calendars, args) {
   closeButton.on('press', () => {
     clipboardy.writeSync(eventText);
     eventBox.destroy();
-    inputBox.setContent('Event successfully copied to clipboard!');
-    inputBox.show();
+    logTable.log('Events copied to clipboard!');
     leftTable.focus();
     screen.render();
-    setTimeout(() => {
-      inputBox.setContent('');
-      inputBox.hide();
-      screen.render();
-    }, 500);
   });
 
   eventBox.append(closeButton);

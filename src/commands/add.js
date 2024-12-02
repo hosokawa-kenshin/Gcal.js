@@ -9,6 +9,7 @@ export function addEvent(auth, screen, calendars, events) {
   const inputBox = screen.children.find(child => child.options.label === 'Commandline');
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const {formBox, formFields} = createAddForm(screen);
+  const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   var selectedCalendarId = null;
 
   const calendarNames = Array.from(
@@ -62,18 +63,10 @@ export function addEvent(auth, screen, calendars, events) {
       resource: event,
     }, async(err, res) => {
       if (err) return console.error('The API returned an error: ' + err);
-
       await updateTable(auth, leftTable, calendars, events);
-      inputBox.setContent('Event successfully registered!');
-      inputBox.show();
-      inputBox.focus();
+      logTable.log('Event successfully registered!');
+      leftTable.focus();
       screen.render();
-      setTimeout(() => {
-        inputBox.setContent('');
-        inputBox.hide();
-        leftTable.focus();
-        screen.render();
-      }, 2000);
     });
   });
 }

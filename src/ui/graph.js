@@ -2,9 +2,9 @@ import blessed from 'blessed';
 import contrib from 'blessed-contrib';
 
 export function createGraph(screen) {
-  const grid = new contrib.grid({ rows: 12, cols: 12, screen: screen });
+  const grid = new contrib.grid({ rows: 10, cols: 12, screen: screen });
 
-  const table = grid.set(0, 6, 12, 6, contrib.table, {
+  const table = grid.set(0, 6, 8, 6, contrib.table, {
     label: 'Filled Time Graph',
     columnWidth: [21, 21],
     border: { type: 'line', fg: 'cyan' },

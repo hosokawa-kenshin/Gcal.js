@@ -3,7 +3,7 @@ import {fetchEvents} from '../services/calendarService.js';
 import {fetchCommandList} from '../services/commandService.js';
 import {setupVimKeysForNavigation} from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
-import { createLeftTable, createRightTable } from './table.js';
+import { createLeftTable, createLogTable } from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
 
 function updateGraph(screen, rightGraph, index, events) {
@@ -227,6 +227,8 @@ export function createLayout(calendars, events) {
   });
   leftTable.select(0);
   updateGraph(screen, rightGraph, 0, events);
+  const logTable = createLogTable(screen);
+  logTable.log('Welcome to Gcal.js!');
 
   screen.append(inputBox);
   screen.append(list);

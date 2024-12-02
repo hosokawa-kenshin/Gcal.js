@@ -3,6 +3,25 @@ import blessed from 'blessed';
 
 import { setupVimKeysForNavigation } from './keyConfig.js';
 
+export function createLogTable(screen){
+  var logTable = blessed.log({
+    top: '80%',
+    left: '50%',
+    width: '50%',
+    height: '20%',
+    tags: true,
+    border: { type: 'line', fg: 'cyan' },
+    scrollable: true,
+    style: {
+      fg: 'green',
+      bg: 'black',
+    },
+    label: 'Gcal.js Log',
+  });
+  screen.append(logTable);
+  return(logTable);;
+}
+
 export function createRightTable(screen){
   const rightTable = contrib.table({
     keys: true,

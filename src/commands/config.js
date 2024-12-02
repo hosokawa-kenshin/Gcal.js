@@ -7,6 +7,7 @@ export async function configCommand(auth, screen, calendars, events) {
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const inputBox = screen.children.find(child => child.options.label === 'Commandline');
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
+  const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   const form = blessed.form({
     parent: screen,
     top: 'center',
@@ -70,16 +71,9 @@ export async function configCommand(auth, screen, calendars, events) {
       calendars.length = 0;
       calendars.push(...fetchedcalendars);
       calendarList.setItems(calendars.map(calendar => calendar.summary));
-      inputBox.setContent('Config successfully registered!');
-      inputBox.show();
-      inputBox.focus();
+      logTable.log('Config successfully registered!');
+      leftTable.focus();
       screen.render();
-      setTimeout(() => {
-        inputBox.setContent('');
-        inputBox.hide();
-        leftTable.focus();
-        screen.render();
-      }, 500);
     });
 
     form.show();
