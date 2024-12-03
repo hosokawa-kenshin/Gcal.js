@@ -7,7 +7,6 @@ export function createGraph(screen) {
     fg: 'white',
     tags: true,
     selectedFg: 'green',
-    selectedBg: 'black',
     interactive: true,
     label: 'Filled Time Graph',
     top: 0,

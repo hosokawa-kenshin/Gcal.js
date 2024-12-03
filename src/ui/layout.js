@@ -10,14 +10,14 @@ function updateGraph(screen, rightGraph, index, events) {
   const currentEventDate = new Date(events[index].start);
   const monday = new Date(currentEventDate);
   const currentDayOfWeek = monday.getDay();
-  const offsetToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek; // 日曜なら-6、他は月曜までの差分
+  const offsetToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
   monday.setDate(monday.getDate() + offsetToMonday);
 
   const weekDates = [];
   for (let i = 0; i < 7; i++) {
     const tempDate = new Date(monday);
     tempDate.setDate(monday.getDate() + i);
-    weekDates.push(tempDate.toISOString().split('T')[0]);
+    weekDates.push(tempDate.toLocalISOString().split('T')[0]);
   }
 
   const filledTime = [];
@@ -134,7 +134,6 @@ export function createLayout(calendars, events) {
     border: { type: 'line', fg: 'white' },
     label: 'Commandline',
     style: {
-      bg: 'black',
       fg: 'white',
     },
     inputOnFocus: true,

@@ -14,7 +14,6 @@ export function createLogTable(screen){
     scrollable: true,
     style: {
       fg: 'green',
-      bg: 'black',
     },
     label: 'Gcal.js Log',
   });
