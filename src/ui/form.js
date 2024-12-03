@@ -1,8 +1,13 @@
 import blessed from 'blessed';
 
-export function createAddForm(screen){
+export function createAddForm(screen) {
   let formBox = screen.children.find(child => child.options.label === 'Add Event');
-  if (formBox) return {formBox, formFields: getExistingFormFields(formBox)};
+  if (formBox) {
+    return {
+      formBox,
+      formFields: getExistingFormFields(formBox)
+    };
+  }
 
   formBox = blessed.form({
     top: 0,
@@ -57,17 +62,22 @@ export function createAddForm(screen){
       mouse: true,
     }),
   };
-  Object.values(formFields).forEach((field) => formBox.append(field));
+
+  Object.values(formFields).forEach(field => formBox.append(field));
+
   Object.values(formFields).forEach((field, index, fields) => {
+    field.listeners('submit').forEach(listener => field.off('submit', listener));
+
     field.on('submit', () => {
-        const nextField = fields[(index + 1) % fields.length];
-        nextField.focus();
-        screen.render();
+      const nextField = fields[(index + 1) % fields.length];
+      nextField.focus();
+      screen.render();
     });
   });
+
   screen.append(formBox);
   screen.render();
-  return {formBox, formFields};
+  return { formBox, formFields };
 }
 
 function getExistingFormFields(formBox) {
