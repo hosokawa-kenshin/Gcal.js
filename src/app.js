@@ -21,12 +21,6 @@ export async function runApp() {
 
   const { screen, inputBox } = createLayout(calendars, events);
 
-  screen.key(['space'], () => {
-    inputBox.show();
-    inputBox.focus();
-    screen.render();
-  });
-
   inputBox.on('submit', (value) => {
     handleInput(auth, value, screen, calendars, events);
     inputBox.clearValue();

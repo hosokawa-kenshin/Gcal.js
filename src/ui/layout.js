@@ -159,26 +159,6 @@ export function createLayout(calendars, events) {
     keys: true,
   });
 
-  const checkedState = new Array(calendarNames.length).fill(false);
-  const configCalendarList = blessed.list({
-    //parent: modalBox,
-    top: 'center',
-    left: 'center',
-    width: '50%',
-    height: '30%',
-    items: calendarNames,
-    label: 'Config Calendar List',
-    border: { type: 'line', fg: 'yellow' },
-    style: {
-        fg: 'white',
-        bg: 'black',
-        selected: { fg: 'black', bg: 'green' }
-    },
-    hidden: true,
-    mouse: true,
-    keys: true,
-  });
-
   const editCalendarCommandList = blessed.list({
     top: 'center',
     left: 'center',
@@ -195,15 +175,6 @@ export function createLayout(calendars, events) {
     hidden: true,
     mouse: true,
     keys: true,
-  });
-
-  function formatItem(name, isChecked) {
-    return `${isChecked ? '[x]' : '[ ]'} ${name}`;
-  }
-  configCalendarList.on('select', (item, index) => {
-    checkedState[index] = !checkedState[index];
-    configCalendarList.setItem(index, formatItem(calendarNames[index], checkedState[index]));
-    screen.render();
   });
 
   const commandList = blessed.list({
@@ -256,6 +227,11 @@ export function createLayout(calendars, events) {
   setupVimKeysForNavigation(commandList, screen, null);
 
   leftTable.focus();
+  leftTable.key(['space'], () => {
+    inputBox.show();
+    inputBox.focus();
+    screen.render();
+  });
   console.log('Create Layout');
   return { screen, inputBox };
 }

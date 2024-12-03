@@ -33,7 +33,6 @@ export function addEvent(auth, screen, calendars, events) {
 
 
   formBox.key(['C-s'], () => {
-    console.log('C-s key detected');
     const title = formFields.title.getValue().trim();
     const date = formFields.date.getValue().trim();
     const startTime = formFields.startTime.getValue().trim();
@@ -44,9 +43,7 @@ export function addEvent(auth, screen, calendars, events) {
     Object.values(formFields).forEach(field => field.clearValue());
 
     if (!title || !date || !startTime || !endTime) {
-      inputBox.setContent('Error: All fields must be filled in.');
-      inputBox.show();
-      inputBox.focus();
+      logTable.log('Error: All fields must be filled in.');
       screen.render();
       return;
     }
