@@ -225,6 +225,7 @@ export function createLayout(calendars, events) {
   screen.append(commandDetailsBox);
   setupVimKeysForNavigation(list, screen, null);
   setupVimKeysForNavigation(commandList, screen, null);
+  setupVimKeysForNavigation(editCalendarCommandList, screen, null);
 
   leftTable.focus();
   leftTable.key(['space'], () => {
