@@ -2,6 +2,7 @@ import { addEvent } from '../commands/add.js';
 import { markdownCommand } from '../commands/markdown.js';
 import { helpEvent } from '../commands/help.js';
 import { configCommand } from '../commands/config.js';
+import { syncCommand } from '../commands/sync.js';
 
 export function handleInput(auth, inputBox, screen, calendars, events) {
 
@@ -18,6 +19,9 @@ export function handleInput(auth, inputBox, screen, calendars, events) {
       break;
     case 'config':
       configCommand(auth, screen, calendars, events);
+      break;
+    case 'sync':
+      syncCommand(auth, screen, calendars, events);
       break;
     case 'jump':
       // Upcoming Events のカーソルの位置を指定した日にジャンプする
