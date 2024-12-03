@@ -21,7 +21,7 @@ export function addEvent(auth, screen, calendars, events) {
 
   calendarList.show();
   calendarList.focus();
-  calendarList.on('select', (item, index) => {
+  calendarList.once('select', (item, index) => {
     calendarList.hide();
     const selectedCalendar = calendarNames[index];
     selectedCalendarId = calendarIDs[index];
@@ -29,15 +29,18 @@ export function addEvent(auth, screen, calendars, events) {
     formBox.show();
     screen.render();
     formFields.title.focus();
-  })
+  });
 
-  screen.key(['C-s'], () => {
-    formBox.hide();
-    screen.render();
+
+  formBox.key(['C-s'], () => {
+    console.log('C-s key detected');
     const title = formFields.title.getValue().trim();
     const date = formFields.date.getValue().trim();
     const startTime = formFields.startTime.getValue().trim();
     const endTime = formFields.endTime.getValue().trim();
+
+    formBox.hide();
+
     Object.values(formFields).forEach(field => field.clearValue());
 
     if (!title || !date || !startTime || !endTime) {
@@ -65,6 +68,8 @@ export function addEvent(auth, screen, calendars, events) {
       if (err) return console.error('The API returned an error: ' + err);
       await updateTable(auth, leftTable, calendars, events);
       logTable.log('Event successfully registered!');
+      formBox.destroy();
+      screen.render();
       leftTable.focus();
       screen.render();
     });
