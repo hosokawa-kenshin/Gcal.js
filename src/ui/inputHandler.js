@@ -1,4 +1,5 @@
 import { addEvent } from '../commands/add.js';
+import { rmEvent } from '../commands/rm.js';
 import { markdownCommand } from '../commands/markdown.js';
 import { helpEvent } from '../commands/help.js';
 import { configCommand } from '../commands/config.js';
@@ -13,6 +14,7 @@ export function handleInput(auth, inputBox, screen, calendars, events) {
       addEvent(auth, screen, calendars, events);
       break;
     case 'rm':
+      rmEvent(auth, screen, calendars);
       break;
     case 'md':
       markdownCommand(auth, screen, calendars, args);
