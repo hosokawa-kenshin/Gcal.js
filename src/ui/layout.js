@@ -210,8 +210,9 @@ export function createLayout(calendars, events) {
   const formattedEvents = formatGroupedEvents(events);
   leftTable.setItems(formattedEvents);
   const rightGraph = createGraph(screen);
-  leftTable.on('select', function (item, index) {
-    updateGraph(screen, rightGraph, index ,events);
+  leftTable.on('keypress', (_, key) => {
+    const currentIndex = leftTable.selected;
+    updateGraph(screen, rightGraph, currentIndex ,events);
   });
   leftTable.select(0);
   updateGraph(screen, rightGraph, 0, events);
