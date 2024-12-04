@@ -17,7 +17,7 @@ export function rmEvent(auth, screen, calendars, index, events){
   screen.render();
   editCommandList.focus();
   editCommandList.once('select', (item, index) => {
-    if (index === 0){
+    if (index === 1){
       calendar.events.delete({
         calendarId: selectedCalendarId,
         eventId: selectedEventsId,
