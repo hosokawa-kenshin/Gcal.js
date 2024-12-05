@@ -1,10 +1,28 @@
 import blessed from 'blessed';
 import {fetchEvents} from '../services/calendarService.js';
+import {insertEventsToDatabase, fetchEventsFromDatabase} from '../services/databaseService.js';
 import {fetchCommandList} from '../services/commandService.js';
 import {setupVimKeysForNavigation} from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
 import { createLeftTable, createLogTable } from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
+
+function searchIndexOfToday(events){
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let index = 0;
+  for (index = 0; index < events.length; index++) {
+    const event = events[index];
+    const eventDate = new Date(event.start);
+    eventDate.setHours(0, 0, 0, 0);
+    if (eventDate.toLocalISOString().slice(0, 10) === today.toLocalISOString().slice(0, 10)) {
+      return index;
+    }else if(eventDate > today){
+      return index;
+    }
+  }
+  return index;
+}
 
 function updateGraph(screen, rightGraph, index, events) {
   const currentEventDate = new Date(events[index].start);
@@ -100,16 +118,15 @@ function formatGroupedEvents(events) {
 }
 
 export async function updateTable(auth, table, calendars, events) {
-  const startDate = new Date();
-  startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date(startDate).nextMonth().nextMonth();
-  endDate.setHours(24, 0, 0, 0);
-  const newEvents = await fetchEvents(auth, calendars, startDate, endDate);
-  newEvents.sort((a, b) => a.start - b.start);
+  const newEvents = await fetchEvents(auth, calendars);
+  await insertEventsToDatabase(newEvents);
   events.length = 0;
-  events.push(...newEvents);
+  const fetchedEvent = await fetchEventsFromDatabase(calendars);
+  events.push(...fetchedEvent);
   const formattedEvents = formatGroupedEvents(events);
   table.setItems(formattedEvents);
+  table.select(searchIndexOfToday(events));
+  table.scrollTo(table.selected + table.height - 3);
   table.screen.render();
 }
 
@@ -212,10 +229,11 @@ export function createLayout(calendars, events) {
   const rightGraph = createGraph(screen);
   leftTable.on('keypress', (_, key) => {
     const currentIndex = leftTable.selected;
-    updateGraph(screen, rightGraph, currentIndex ,events);
+    updateGraph(screen, rightGraph, currentIndex , events);
   });
-  leftTable.select(0);
-  updateGraph(screen, rightGraph, 0, events);
+  leftTable.select(searchIndexOfToday(events));
+  leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
+  updateGraph(screen, rightGraph, leftTable.selected, events);
   const logTable = createLogTable(screen);
   logTable.log('Welcome to Gcal.js!');
 

@@ -31,7 +31,7 @@ export async function markdownCommand(auth, screen, calendars, args) {
     },
   });
 
-  const events = await fetchEvents(auth, calendars, convertToDateTime(args[0],"0:00"), convertToDateTime(args[1],"23:59"));
+  const events = await fetchEvents(auth, calendars);
   events.sort((a, b) => a.start - b.start);
   const eventText = events
     .map(event => {

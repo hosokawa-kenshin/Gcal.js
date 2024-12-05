@@ -6,8 +6,9 @@ export class Calendar {
    * @param {String} summary
    * @return {Calendar}
    */
-  constructor(id, summary) {
+  constructor(id, summary, syncToken) {
     this.id = id;
     this.summary = summary;
+    this.syncToken = syncToken;
   }
 }

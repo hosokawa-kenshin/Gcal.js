@@ -4,7 +4,7 @@ import fs2 from 'fs';
 import path from 'path';
 import {authenticate} from '@google-cloud/local-auth';
 import {google} from 'googleapis';
-import {insertCalendarListToDatabase, fetchCalendarsFromDatabase} from './databaseService.js';
+import {insertCalendarListToDatabase, fetchCalendarsFromDatabase, setSyncTokenInDatabase, ensureSyncTokenColumn, deleteEventsFromDatabase, insertEventsToDatabase, fetchEventsFromDatabase} from './databaseService.js';
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -88,16 +88,23 @@ export async function fetchCalendars(auth) {
   * @param {Object} calendar The set of calendar ID and summary.
   * @return {Promise<Array[Event]>} List of events.
   */
-  export async function fetchEventFromCalendar(client, startTime, endTime, calendar) {
-    const res = await client.events.list({
+  export async function fetchEventFromCalendar(client, calendar) {
+    const params = {
       calendarId: calendar.id,
-      timeMin: startTime.toLocalISOString(),
-      timeMax: endTime.toLocalISOString(),
       singleEvents: true,
-      orderBy: 'startTime',
-    });
+      maxResults: 2500,
+    };
+    if (calendar.syncToken) {
+      params.syncToken = calendar.syncToken;
+    }
+    const res = await client.events.list(params);
     const events = res.data.items;
-    return events.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
+    calendar.syncToken = res.data.nextSyncToken;
+    await setSyncTokenInDatabase(calendar);
+    const deletedEvents = res.data.items.filter(event => event.status === 'cancelled');
+    await deleteEventsFromDatabase(deletedEvents);
+    const validEvents = events.filter(event => event.status === 'confirmed');
+    return validEvents.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
   }
 
 /**
@@ -109,11 +116,11 @@ export async function fetchCalendars(auth) {
   * @param {Date} endtime The end date of fetching events.
   * @return {Promise<Array[Event]>} List of events.
   */
-  export async function fetchEvents(auth, calendars, startTime, endTime) {
+  export async function fetchEvents(auth, calendars) {
     const client = google.calendar({version: 'v3', auth});
     let tasks = [];
     for (const calendar of calendars) {
-      const task = fetchEventFromCalendar(client, startTime, endTime, calendar);
+      const task = fetchEventFromCalendar(client,calendar);
       tasks.push(task);
     }
 
@@ -131,7 +138,15 @@ export async function fetchCalendars(auth) {
         return calendars;
       });
     }else{
+      ensureSyncTokenColumn();
       calendars = await fetchCalendarsFromDatabase();
     }
     return calendars;
+  }
+
+  export async function initializeEvents(auth, calendars) {
+    const rawEvents = await fetchEvents(auth, calendars);
+    await insertEventsToDatabase(rawEvents);
+    const events = await fetchEventsFromDatabase(calendars);
+    return events;
   }

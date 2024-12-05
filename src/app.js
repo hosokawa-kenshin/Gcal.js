@@ -1,7 +1,7 @@
 import '../src/utils/datePrototype.js';
 import { createLayout } from './ui/layout.js';
 import { handleInput } from './ui/inputHandler.js';
-import { authorize, fetchEvents, fetchCalendars, initializeCalendars } from './services/calendarService.js';
+import { authorize, fetchEvents, fetchCalendars, initializeCalendars, initializeEvents } from './services/calendarService.js';
 import { insertCalendarListToDatabase, fetchCalendarsFromDatabase } from './services/databaseService.js';
 import fs from "fs";
 import { createLeftTable } from './ui/table.js';
@@ -18,7 +18,7 @@ export async function runApp() {
   endDate.setHours(24, 0, 0, 0);
   const auth = await authorize();
   const calendars = await initializeCalendars(auth);
-  var events = await fetchEvents(auth, calendars, startDate, endDate);
+  var events = await initializeEvents(auth, calendars);
   events.sort((a, b) => a.start - b.start);
 
   const { screen, inputBox } = createLayout(calendars, events);
