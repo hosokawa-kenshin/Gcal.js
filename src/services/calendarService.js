@@ -94,17 +94,35 @@ export async function fetchCalendars(auth) {
       singleEvents: true,
       maxResults: 2500,
     };
-    if (calendar.syncToken) {
+    if (calendar.syncToken !== null) {
       params.syncToken = calendar.syncToken;
     }
-    const res = await client.events.list(params);
-    const events = res.data.items;
-    calendar.syncToken = res.data.nextSyncToken;
-    await setSyncTokenInDatabase(calendar);
-    const deletedEvents = res.data.items.filter(event => event.status === 'cancelled');
-    await deleteEventsFromDatabase(deletedEvents);
-    const validEvents = events.filter(event => event.status === 'confirmed');
-    return validEvents.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
+    try {
+      const res = await client.events.list(params);
+      const events = res.data.items;
+      if (res.data.nextSyncToken) {
+        calendar.syncToken = res.data.nextSyncToken;
+        await setSyncTokenInDatabase(calendar);
+        const deletedEvents = res.data.items.filter(event => event.status === 'cancelled');
+        await deleteEventsFromDatabase(deletedEvents);
+        const validEvents = events.filter(event => event.status === 'confirmed');
+        return validEvents.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
+      }
+      await setSyncTokenInDatabase(calendar);
+      return events.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
+    } catch(err) {
+      if (err.code === 410) {
+        const allRequestParams = {
+          calendarId: calendar.id,
+          singleEvents: true,
+          maxResults: 2500,
+        };
+        const allRes = await client.events.list(allRequestParams);
+        await setSyncTokenInDatabase(calendar);
+        const allEvents = allRes.data.items;
+        return allEvents.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
+      }
+    }
   }
 
 /**
@@ -133,10 +151,9 @@ export async function fetchCalendars(auth) {
     var calendars = [];
     if (!fs2.existsSync(dbPath)) {
       console.log("Database file does not exist. Creating a new database...");
-      calendars = await fetchCalendars(auth).then(calendars => {
-        insertCalendarListToDatabase(calendars);
-        return calendars;
-      });
+      calendars = await fetchCalendars(auth);
+      await insertCalendarListToDatabase(calendars);
+      calendars = await fetchCalendarsFromDatabase();
     }else{
       ensureSyncTokenColumn();
       calendars = await fetchCalendarsFromDatabase();
@@ -145,6 +162,7 @@ export async function fetchCalendars(auth) {
   }
 
   export async function initializeEvents(auth, calendars) {
+    console.log("Fetching events...");
     const rawEvents = await fetchEvents(auth, calendars);
     await insertEventsToDatabase(rawEvents);
     const events = await fetchEventsFromDatabase(calendars);

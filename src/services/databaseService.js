@@ -84,17 +84,19 @@ export async function deleteEventsFromDatabase(events){
 
 export async function insertCalendarListToDatabase(calendars){
   const db = new sqlite3.Database("./db/Gcal.db");
-  await runQuery(db, "CREATE TABLE IF NOT EXISTS Calendars (id TEXT, summary TEXT, subscription BOOLEAN DEFAULT 1, syncToken TEXT)");
+  await runQuery(db, "CREATE TABLE IF NOT EXISTS Calendars (id TEXT, summary TEXT, subscription BOOLEAN DEFAULT 1, syncToken TEXT DEFAULT NULL)");
   for (const calendar of calendars) {
     await runQuery(db, "INSERT INTO Calendars (id, summary, subscription, syncToken) VALUES (?, ?, ?, ?)", [calendar.id, calendar.summary, true, calendar.syncToken]);
   }
-
-  db.close((err) => {
-    if (err) {
-      console.error("Error closing database:", err.message);
-    } else {
-      console.log("Database connection closed.");
-    }
+  await new Promise((resolve, reject) => {
+    db.close((err) => {
+      if (err) {
+        console.error("Error closing database:", err.message);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
   });
 }
 
@@ -106,7 +108,16 @@ export async function insertEventsToDatabase(events){
       await runQuery(db, "INSERT INTO Events (id, start, end, summary, calendarId, calendarName) VALUES (?, ?, ?, ?, ?, ?)", [event.id, event.start.toISOString(), event.end.toISOString(), event.summary, event.calendarId, event.calendarName]);
     });
   }
-  db.close();
+  await new Promise((resolve, reject) => {
+    db.close((err) => {
+      if (err) {
+        console.error("Error closing database:", err.message);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 export async function fetchEventsFromDatabase(calendars){
@@ -144,7 +155,6 @@ export async function fetchEventsFromDatabase(calendars){
         console.error("Error closing database:", err.message);
         reject(err);
       } else {
-        console.log("Database connection closed.");
         resolve();
       }
     });
@@ -188,7 +198,6 @@ export async function fetchCalendarsFromDatabase(){
         console.error("Error closing database:", err.message);
         reject(err);
       } else {
-        console.log("Database connection closed.");
         resolve();
       }
     });
