@@ -24,6 +24,23 @@ export function searchIndexOfToday(events){
   return index;
 }
 
+export function searchIndex(date, events){
+  const today = new Date(date);
+  today.setHours(0, 0, 0, 0);
+  let index = 0;
+  for (index = 0; index < events.length; index++) {
+    const event = events[index];
+    const eventDate = new Date(event.start);
+    eventDate.setHours(0, 0, 0, 0);
+    if (eventDate.toLocalISOString().slice(0, 10) === today.toLocalISOString().slice(0, 10)) {
+      return index;
+    }else if(eventDate > today){
+      return index;
+    }
+  }
+  return index;
+}
+
 function updateGraph(screen, rightGraph, index, events) {
   const currentEventDate = new Date(events[index].start);
   const monday = new Date(currentEventDate);
@@ -125,7 +142,7 @@ export async function updateTable(auth, table, calendars, events) {
   events.push(...fetchedEvent);
   const formattedEvents = formatGroupedEvents(events);
   table.setItems(formattedEvents);
-  table.select(searchIndexOfToday(events));
+  table.select(searchIndex(new Date, events));
   table.scrollTo(table.selected + table.height - 3);
   table.screen.render();
 }

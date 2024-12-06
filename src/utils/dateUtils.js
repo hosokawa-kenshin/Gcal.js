@@ -19,10 +19,19 @@
   * @return {Date}
   */
   export function convertToDateTime(dateStr, timeStr) {
+    if (dateStr.includes('-')) {
+      dateStr = dateStr.replace(/-/g, '/');
+    }
     const d = new Date(dateStr);
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    d.setHours(hours, minutes, 0, 0);
-    return d;
+    if (timeStr) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      d.setHours(hours, minutes, 0, 0);
+      return d;
+    }else{
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
   }
 
 /**
