@@ -5,7 +5,7 @@ import { authorize, fetchEvents, fetchCalendars, initializeCalendars, initialize
 import { insertCalendarListToDatabase, fetchCalendarsFromDatabase } from './services/databaseService.js';
 import fs from "fs";
 import { createLeftTable } from './ui/table.js';
-import { rmEvent } from './commands/rm.js';
+import { editEvent } from './commands/edit.js';
 
 export async function runApp() {
   console.log('Running app ...');
@@ -38,7 +38,7 @@ export async function runApp() {
   });
 
   leftTable.on('select', (item, index) => {
-    rmEvent(auth, screen, calendars, index, events);
+    editEvent(auth, screen, calendars, index, events);
   });
 
 

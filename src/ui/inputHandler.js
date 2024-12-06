@@ -1,5 +1,5 @@
 import { addEvent } from '../commands/add.js';
-import { rmEvent } from '../commands/rm.js';
+import { editEvent } from '../commands/edit.js';
 import { markdownCommand } from '../commands/markdown.js';
 import { helpEvent } from '../commands/help.js';
 import { configCommand } from '../commands/config.js';

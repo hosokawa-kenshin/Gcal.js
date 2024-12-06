@@ -26,6 +26,20 @@
   }
 
 /**
+ * Split an ISO 8601 dateTime string into date and time components.
+ *
+ * @param {string} dateTime - The ISO 8601 dateTime string (e.g., "2024-12-06T14:30:00Z").
+ * @returns {object} - An object containing the date and time components: { date: "YYYY-MM-DD", time: "HH:MM" }.
+ */
+  export function splitDateTimeIntoDateAndTime(dateTime) {
+    const dateObj = new Date(dateTime);
+    const localISOString = dateObj.toLocalISOString();
+    const date = localISOString.split("T")[0];
+    const time = localISOString.split("T")[1].slice(0, 5);
+    return { date, time };
+  }
+
+/**
  * Return the day of the week.
  *  * @param {int} year
  *  * @param {int} month
@@ -33,8 +47,8 @@
  *   * @return {String} (e.g., "Sunday", "Monday")
  *
  */
- export function getDayOfWeek(year, month, day) {
-   const date = new Date(year, month - 1, day);
-   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-   return daysOfWeek[date.getDay()];
- }
+  export function getDayOfWeek(year, month, day) {
+    const date = new Date(year, month - 1, day);
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return daysOfWeek[date.getDay()];
+  }

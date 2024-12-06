@@ -181,7 +181,7 @@ export function createLayout(calendars, events) {
     left: 'center',
     width: '50%',
     height: '30%',
-    items: ['edit', 'rm'],
+    items: ['edit', 'cp', 'rm'],
     label: 'Edit List',
     border: { type: 'line', fg: 'yellow' },
     style: {
