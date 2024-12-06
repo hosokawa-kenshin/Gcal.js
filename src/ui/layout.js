@@ -7,7 +7,7 @@ import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
 import { createLeftTable, createLogTable } from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
 
-function searchIndexOfToday(events){
+export function searchIndexOfToday(events){
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   let index = 0;
@@ -83,7 +83,7 @@ function groupEventsByDate(events) {
     }, {});
 }
 
-function formatGroupedEvents(events) {
+export function formatGroupedEvents(events) {
   const groupedEvents = groupEventsByDate(events);
   const formattedData = [];
   var beforeDateKey = null;
@@ -223,14 +223,18 @@ export function createLayout(calendars, events) {
     hidden: true,
   });
 
+  const keypressListener = (_, key) => {
+    if (key.name === 'j' || key.name === 'k') {
+      const currentIndex = leftTable.selected;
+      updateGraph(screen, rightGraph, currentIndex, events);
+    }
+  };
+
   const leftTable = createLeftTable(screen);
   const formattedEvents = formatGroupedEvents(events);
   leftTable.setItems(formattedEvents);
   const rightGraph = createGraph(screen);
-  leftTable.on('keypress', (_, key) => {
-    const currentIndex = leftTable.selected;
-    updateGraph(screen, rightGraph, currentIndex , events);
-  });
+  leftTable.on('keypress', keypressListener);
   leftTable.select(searchIndexOfToday(events));
   leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
   updateGraph(screen, rightGraph, leftTable.selected, events);
@@ -253,5 +257,5 @@ export function createLayout(calendars, events) {
     screen.render();
   });
   console.log('Create Layout');
-  return { screen, inputBox };
+  return { screen, inputBox , keypressListener};
 }

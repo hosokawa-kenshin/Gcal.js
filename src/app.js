@@ -21,12 +21,12 @@ export async function runApp() {
   var events = await initializeEvents(auth, calendars);
   events.sort((a, b) => a.start - b.start);
 
-  const { screen, inputBox } = createLayout(calendars, events);
+  const { screen, inputBox, keypressListener} = createLayout(calendars, events);
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const editCommandList = screen.children.find(child => child.options.label === 'Edit List');
 
   inputBox.on('submit', (value) => {
-    handleInput(auth, value, screen, calendars, events);
+    handleInput(auth, value, screen, calendars, events, keypressListener);
     inputBox.clearValue();
     inputBox.hide();
     screen.render();
