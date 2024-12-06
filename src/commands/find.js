@@ -7,7 +7,6 @@ export function findCommand(screen, events, args, keypressListener) {
   const filteredEvents = events.filter(event => event.summary && event.summary.includes(keyword));
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
-  logTable.log(filteredEvents);
   if (filteredEvents.length === 0) {
     logTable.log('No events found');
     return;

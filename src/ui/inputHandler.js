@@ -23,7 +23,7 @@ export function handleInput(auth, inputBox, screen, calendars, events, keypressL
       configCommand(auth, screen, calendars, events);
       break;
     case 'sync':
-      syncCommand(auth, screen, calendars, events);
+      syncCommand(auth, screen, calendars, events, keypressListener);
       break;
     case 'find':
       findCommand(screen, events, args, keypressListener);
