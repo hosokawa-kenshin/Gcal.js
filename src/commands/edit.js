@@ -12,9 +12,8 @@ export function editEvent(auth, screen, calendars, index, events) {
   const {formBox, formFields} = createAddForm(screen);
 
   const selectedEvent = events[index];
-  var selectedCalendarId = selectedEvent.calendarId;
+  const selectedCalendarId = selectedEvent.calendarId;
   const selectedEventsId = selectedEvent.id;
-  const selectedCalendar = selectedEvent.calendarName;
   const { date: startDate, time: startTime } = splitDateTimeIntoDateAndTime(selectedEvent.start);
   const { date: endDate, time: endTime } = splitDateTimeIntoDateAndTime(selectedEvent.end);
   const calendarNames = Array.from(
@@ -31,51 +30,67 @@ export function editEvent(auth, screen, calendars, index, events) {
     switch (index) {
       case 0:
         editCommandList.hide();
-        formBox.setLabel(`Copy Event - ${selectedCalendar}`);
-        formBox.show();
-        formFields.title.focus();
-        formFields.title.setValue(selectedEvent.summary);
-        formFields.date.setValue(startDate);
-        formFields.startTime.setValue(startTime);
-        formFields.endTime.setValue(endTime);
+        calendarList.show();
+        calendarList.focus();
         screen.render();
-        formBox.key(['C-s'], () => {
-          const title = formFields.title.getValue().trim();
-          const date = formFields.date.getValue().trim();
-          const startTime = formFields.startTime.getValue().trim();
-          const endTime = formFields.endTime.getValue().trim();
+        calendarList.once('select', (item, index) => {
+          const selectedEditCalendar = calendarNames[index];
+          const selectedEditCalendarId = calendarIDs[index];
+          calendarList.hide();
+          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
+          formBox.show();
+          formFields.title.focus();
+          formFields.title.setValue(selectedEvent.summary);
+          formFields.date.setValue(startDate);
+          formFields.startTime.setValue(startTime);
+          formFields.endTime.setValue(endTime);
+          screen.render();
 
-          formBox.hide();
+          formBox.key(['C-s'], () => {
+            const title = formFields.title.getValue().trim();
+            const date = formFields.date.getValue().trim();
+            const startTime = formFields.startTime.getValue().trim();
+            const endTime = formFields.endTime.getValue().trim();
 
-          Object.values(formFields).forEach(field => field.clearValue());
+            formBox.hide();
 
-          if (!title || !date || !startTime || !endTime) {
-            logTable.log('Error: All fields must be filled in.');
-            screen.render();
-            return;
-          }
+            Object.values(formFields).forEach(field => field.clearValue());
 
-          const event = {
-            summary: title,
-            start: {
-              dateTime: convertToDateTime(date, startTime).toISOString(),
-            },
-            end: {
-              dateTime: convertToDateTime(date, endTime).toISOString(),
-            },
-          };
+            if (!title || !date || !startTime || !endTime) {
+              logTable.log('Error: All fields must be filled in.');
+              screen.render();
+              return;
+            }
 
-          calendar.events.insert({
-            calendarId: selectedCalendarId,
-            resource: event,
-          }, async(err, res) => {
-            if (err) return console.error('The API returned an error: ' + err);
-            await updateTable(auth, leftTable, calendars, events);
-            logTable.log('Event successfully registered!');
-            formBox.destroy();
-            screen.render();
-            leftTable.focus();
-            screen.render();
+            calendar.events.delete(
+              {
+                calendarId: selectedCalendarId,
+                eventId: selectedEventsId,
+              }
+            );
+
+            const event = {
+              summary: title,
+              start: {
+                dateTime: convertToDateTime(date, startTime).toISOString(),
+              },
+              end: {
+                dateTime: convertToDateTime(date, endTime).toISOString(),
+              },
+            };
+
+            calendar.events.insert({
+              calendarId: selectedEditCalendarId,
+              resource: event,
+            }, async(err, res) => {
+              if (err) return console.error('The API returned an error: ' + err);
+              await updateTable(auth, leftTable, calendars, events);
+              logTable.log('Event successfully moved!');
+              formBox.destroy();
+              screen.render();
+              leftTable.focus();
+              screen.render();
+            });
           });
         });
         break;
@@ -86,7 +101,7 @@ export function editEvent(auth, screen, calendars, index, events) {
         screen.render();
         calendarList.once('select', (item, index) => {
           const selectedEditCalendar = calendarNames[index];
-          selectedCalendarId = calendarIDs[index];
+          const selectedEditCalendarId = calendarIDs[index];
           calendarList.hide();
           formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
           formBox.show();
@@ -96,66 +111,65 @@ export function editEvent(auth, screen, calendars, index, events) {
           formFields.startTime.setValue(startTime);
           formFields.endTime.setValue(endTime);
           screen.render();
-        });
 
-        formBox.key(['C-s'], () => {
-          const title = formFields.title.getValue().trim();
-          const date = formFields.date.getValue().trim();
-          const startTime = formFields.startTime.getValue().trim();
-          const endTime = formFields.endTime.getValue().trim();
+          formBox.key(['C-s'], () => {
+            const title = formFields.title.getValue().trim();
+            const date = formFields.date.getValue().trim();
+            const startTime = formFields.startTime.getValue().trim();
+            const endTime = formFields.endTime.getValue().trim();
 
-          formBox.hide();
+            formBox.hide();
 
-          Object.values(formFields).forEach(field => field.clearValue());
+            Object.values(formFields).forEach(field => field.clearValue());
 
-          if (!title || !date || !startTime || !endTime) {
-            logTable.log('Error: All fields must be filled in.');
-            screen.render();
-            return;
-          }
+            if (!title || !date || !startTime || !endTime) {
+              logTable.log('Error: All fields must be filled in.');
+              screen.render();
+              return;
+            }
 
-          const event = {
-            summary: title,
-            start: {
-              dateTime: convertToDateTime(date, startTime).toISOString(),
-            },
-            end: {
-              dateTime: convertToDateTime(date, endTime).toISOString(),
-            },
-          };
+            const event = {
+              summary: title,
+              start: {
+                dateTime: convertToDateTime(date, startTime).toISOString(),
+              },
+              end: {
+                dateTime: convertToDateTime(date, endTime).toISOString(),
+              },
+            };
 
-          calendar.events.insert({
-            calendarId: selectedCalendarId,
-            resource: event,
-          }, async(err, res) => {
-            if (err) return console.error('The API returned an error: ' + err);
-            await updateTable(auth, leftTable, calendars, events);
-            logTable.log('Event successfully registered!');
-            formBox.destroy();
-            screen.render();
-            leftTable.focus();
-            screen.render();
+            calendar.events.insert({
+              calendarId: selectedEditCalendarId,
+              resource: event,
+            }, async(err, res) => {
+              if (err) return console.error('The API returned an error: ' + err);
+              await updateTable(auth, leftTable, calendars, events);
+              logTable.log('Event successfully registered!');
+              formBox.destroy();
+              screen.render();
+              leftTable.focus();
+              screen.render();
+            });
           });
         });
         break;
-        case 2:
-          calendar.events.delete(
-            {
-              calendarId: selectedCalendarId,
-              eventId: selectedEventsId,
-            },
-            async (err, res) => {
-              if (err) {
-                console.error('The API returned an error: ' + err);
-                return;
-              }
-              await updateTable(auth, leftTable, calendars, events);
-              logTable.log('Event successfully deleted!');
-              editCommandList.hide();
-              screen.render();
+      case 2:
+        calendar.events.delete(
+          {
+            calendarId: selectedCalendarId,
+            eventId: selectedEventsId,
+          },
+          async (err, res) => {
+            if (err) {
+              console.error('The API returned an error: ' + err);
+              return;
             }
-          );
-          break;
+            await updateTable(auth, leftTable, calendars, events);
+            logTable.log('Event successfully deleted!');
+            editCommandList.hide();
+            screen.render();
+          }
+        );
       default:
         break;
     }
