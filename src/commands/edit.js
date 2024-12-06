@@ -12,11 +12,17 @@ export function editEvent(auth, screen, calendars, index, events) {
   const {formBox, formFields} = createAddForm(screen);
 
   const selectedEvent = events[index];
-  const selectedCalendarId = selectedEvent.calendarId;
+  var selectedCalendarId = selectedEvent.calendarId;
   const selectedEventsId = selectedEvent.id;
   const selectedCalendar = selectedEvent.calendarName;
   const { date: startDate, time: startTime } = splitDateTimeIntoDateAndTime(selectedEvent.start);
   const { date: endDate, time: endTime } = splitDateTimeIntoDateAndTime(selectedEvent.end);
+  const calendarNames = Array.from(
+    new Set(calendars.map(calendar=> calendar.summary))
+  );
+  const calendarIDs = Array.from(
+    new Set(calendars.map(calendar=> calendar.id))
+  );
 
   editCommandList.show();
   screen.render();
@@ -25,15 +31,14 @@ export function editEvent(auth, screen, calendars, index, events) {
     switch (index) {
       case 0:
         editCommandList.hide();
-        formBox.setLabel(`Edit Event - ${selectedCalendar}`);
+        formBox.setLabel(`Copy Event - ${selectedCalendar}`);
         formBox.show();
-        screen.render();
         formFields.title.focus();
         formFields.title.setValue(selectedEvent.summary);
         formFields.date.setValue(startDate);
         formFields.startTime.setValue(startTime);
         formFields.endTime.setValue(endTime);
-
+        screen.render();
         formBox.key(['C-s'], () => {
           const title = formFields.title.getValue().trim();
           const date = formFields.date.getValue().trim();
@@ -76,14 +81,22 @@ export function editEvent(auth, screen, calendars, index, events) {
         break;
       case 1:
         editCommandList.hide();
-        formBox.setLabel(`Copy Event - ${selectedCalendar}`);
-        formBox.show();
-        formFields.title.focus();
-        formFields.title.setValue(selectedEvent.summary);
-        formFields.date.setValue(startDate);
-        formFields.startTime.setValue(startTime);
-        formFields.endTime.setValue(endTime);
+        calendarList.show();
+        calendarList.focus();
         screen.render();
+        calendarList.once('select', (item, index) => {
+          const selectedEditCalendar = calendarNames[index];
+          selectedCalendarId = calendarIDs[index];
+          calendarList.hide();
+          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
+          formBox.show();
+          formFields.title.focus();
+          formFields.title.setValue(selectedEvent.summary);
+          formFields.date.setValue(startDate);
+          formFields.startTime.setValue(startTime);
+          formFields.endTime.setValue(endTime);
+          screen.render();
+        });
 
         formBox.key(['C-s'], () => {
           const title = formFields.title.getValue().trim();
