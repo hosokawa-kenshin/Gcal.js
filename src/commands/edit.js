@@ -78,12 +78,12 @@ export function editEvent(auth, screen, calendars, index, events) {
         editCommandList.hide();
         formBox.setLabel(`Copy Event - ${selectedCalendar}`);
         formBox.show();
-        screen.render();
         formFields.title.focus();
         formFields.title.setValue(selectedEvent.summary);
         formFields.date.setValue(startDate);
         formFields.startTime.setValue(startTime);
         formFields.endTime.setValue(endTime);
+        screen.render();
 
         formBox.key(['C-s'], () => {
           const title = formFields.title.getValue().trim();
