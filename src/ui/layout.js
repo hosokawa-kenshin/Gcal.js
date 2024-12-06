@@ -6,6 +6,8 @@ import {setupVimKeysForNavigation} from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
 import { createLeftTable, createLogTable } from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
+import pkg from 'japanese-holidays';
+const { isHoliday } = pkg;
 
 export function searchIndexOfToday(events){
   const today = new Date();
@@ -121,7 +123,7 @@ export function formatGroupedEvents(events) {
         const day = date.getDay()
         if (day === 6) {
           coloredDate = colorDate(dateKey, 'blue');
-        } else if (day === 0) {
+        } else if (day === 0 || isHoliday(date)) {
           coloredDate = colorDate(dateKey, 'red');
         } else {
           coloredDate = colorDate(dateKey, 'normal');
@@ -198,7 +200,7 @@ export function createLayout(calendars, events) {
     left: 'center',
     width: '50%',
     height: '30%',
-    items: ['編集', 'コピー', '削除'],
+    items: ['edit', 'cp', 'rm'],
     label: 'Edit List',
     border: { type: 'line', fg: 'yellow' },
     style: {
@@ -252,11 +254,11 @@ export function createLayout(calendars, events) {
   leftTable.setItems(formattedEvents);
   const rightGraph = createGraph(screen);
   leftTable.on('keypress', keypressListener);
+  const logTable = createLogTable(screen);
+  logTable.log('Welcome to Gcal.js!');
   leftTable.select(searchIndexOfToday(events));
   leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
   updateGraph(screen, rightGraph, leftTable.selected, events);
-  const logTable = createLogTable(screen);
-  logTable.log('Welcome to Gcal.js!');
 
   screen.append(inputBox);
   screen.append(list);
