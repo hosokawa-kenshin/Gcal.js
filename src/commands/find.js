@@ -4,7 +4,7 @@ import { searchIndexOfToday, formatGroupedEvents} from '../ui/layout.js';
 
 export function findCommand(screen, events, args, keypressListener) {
   const [keyword] = args;
-  const filteredEvents = events.filter(event => event.summary.includes(keyword));
+  const filteredEvents = events.filter(event => event.summary && event.summary.includes(keyword));
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   logTable.log(filteredEvents);
