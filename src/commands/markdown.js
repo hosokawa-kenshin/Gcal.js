@@ -2,6 +2,8 @@ import blessed from 'blessed';
 import clipboardy from 'clipboardy';
 import { fetchCalendars, fetchEvents } from '../services/calendarService.js';
 import { convertToDateTime } from '../utils/dateUtils.js';
+import { fetchSelectedEventsFromDatabase } from '../services/calendarService.js';
+import { fetchEventsFromDatabase } from '../services/databaseService.js';
 /**
   * Display events
   *
@@ -31,7 +33,12 @@ export async function markdownCommand(auth, screen, calendars, args) {
     },
   });
 
-  const events = await fetchEvents(auth, calendars);
+  let events = [];
+  if (args.length === 0) {
+    events = await fetchEventsFromDatabase(calendars);
+  } else {
+    events = await fetchSelectedEventsFromDatabase(calendars, args[0], args[1]);
+  }
   events.sort((a, b) => a.start - b.start);
   const eventText = events
     .map(event => {
