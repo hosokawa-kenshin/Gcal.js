@@ -1,15 +1,53 @@
 import blessed from 'blessed';
-import {fetchEvents} from '../services/calendarService.js';
-import {insertEventsToDatabase, fetchEventsFromDatabase} from '../services/databaseService.js';
-import {fetchCommandList} from '../services/commandService.js';
-import {setupVimKeysForNavigation} from './keyConfig.js';
+import { fetchEvents } from '../services/calendarService.js';
+import { insertEventsToDatabase, fetchEventsFromDatabase } from '../services/databaseService.js';
+import { fetchCommandList } from '../services/commandService.js';
+import { setupVimKeysForNavigation } from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
 import { createLeftTable, createLogTable } from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
+import Event from '../models/event.js';
 import pkg from 'japanese-holidays';
 const { isHoliday } = pkg;
 
-export function searchIndexOfToday(events){
+function fillEmptyEvents(events) {
+  const filledEvents = [];
+
+  for (let i = 0; i < events.length; i++) {
+    filledEvents.push(events[i]);
+
+    if (i < events.length - 1) {
+      const currentEventEnd = new Date(events[i].end);
+      currentEventEnd.setHours(0, 0, 0, 0);
+      const nextEventStart = new Date(events[i + 1].start);
+      nextEventStart.setHours(0, 0, 0, 0);
+
+      while (currentEventEnd < nextEventStart) {
+        currentEventEnd.setDate(currentEventEnd.getDate() + 1);
+
+        if (currentEventEnd < nextEventStart) {
+          filledEvents.push(
+            new Event(
+              '',
+              new Date(currentEventEnd),
+              new Date(currentEventEnd),
+              '',
+              null,
+              null
+            )
+          );
+        }
+      }
+    }
+  }
+
+  events.length = 0;
+  events.push(...filledEvents);
+
+  return events;
+}
+
+export function searchIndexOfToday(events) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   let index = 0;
@@ -19,14 +57,14 @@ export function searchIndexOfToday(events){
     eventDate.setHours(0, 0, 0, 0);
     if (eventDate.toLocalISOString().slice(0, 10) === today.toLocalISOString().slice(0, 10)) {
       return index;
-    }else if(eventDate > today){
+    } else if (eventDate > today) {
       return index;
     }
   }
   return index;
 }
 
-export function searchIndex(date, events){
+export function searchIndex(date, events) {
   const today = new Date(date);
   today.setHours(0, 0, 0, 0);
   let index = 0;
@@ -36,7 +74,7 @@ export function searchIndex(date, events){
     eventDate.setHours(0, 0, 0, 0);
     if (eventDate.toLocalISOString().slice(0, 10) === today.toLocalISOString().slice(0, 10)) {
       return index;
-    }else if(eventDate > today){
+    } else if (eventDate > today) {
       return index;
     }
   }
@@ -92,14 +130,14 @@ function groupEventsByDate(events) {
     var dateKey = event.start.toLocalISOString().split('T')[0];
     var year = Number(event.start.toLocalISOString().split('-')[0]);
     var month = Number(event.start.toLocalISOString().split('-')[1]);
-    var day = parseInt(event.start.toLocalISOString().split('-')[2],10);
+    var day = parseInt(event.start.toLocalISOString().split('-')[2], 10);
     dateKey = dateKey + '(' + getDayOfWeek(year, month, day) + ')';
     if (!grouped[dateKey]) {
       grouped[dateKey] = [];
     }
     grouped[dateKey].push(event);
-      return grouped;
-    }, {});
+    return grouped;
+  }, {});
 }
 
 export function formatGroupedEvents(events) {
@@ -107,32 +145,38 @@ export function formatGroupedEvents(events) {
   const formattedData = [];
   var beforeDateKey = null;
   Object.keys(groupedEvents)
-      .forEach((dateKey) => {
-    groupedEvents[dateKey].forEach((event) => {
-      const startTime = event.start.toTimeString().slice(0, 5);
-      const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
-      const time = endTime ? `${startTime}-${endTime}` : startTime;
-      const summary = event.summary;
-      const calendarName = `[${event.calendarName}]`;
-      let coloredDate = dateKey;
+    .forEach((dateKey) => {
+      groupedEvents[dateKey].forEach((event) => {
+        const startTime = event.start.toTimeString().slice(0, 5);
+        const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
+        const time = endTime ? `${startTime}-${endTime}` : startTime;
+        const summary = event.summary;
+        const calendarName = `[${event.calendarName}]`;
+        let coloredDate = dateKey;
 
-      if (dateKey === beforeDateKey) {
-        coloredDate = "".padEnd(dateKey.length);
-      }else{
-        const date = new Date(event.start);
-        const day = date.getDay()
-        if (day === 6) {
-          coloredDate = colorDate(dateKey, 'blue');
-        } else if (day === 0 || isHoliday(date)) {
-          coloredDate = colorDate(dateKey, 'red');
+        if (dateKey === beforeDateKey) {
+          coloredDate = "".padEnd(dateKey.length);
         } else {
-          coloredDate = colorDate(dateKey, 'normal');
+          const date = new Date(event.start);
+          const day = date.getDay()
+          if (day === 6) {
+            coloredDate = colorDate(dateKey, 'blue');
+          } else if (day === 0 || isHoliday(date)) {
+            coloredDate = colorDate(dateKey, 'red');
+          } else {
+            coloredDate = colorDate(dateKey, 'normal');
+          }
         }
-      }
-      beforeDateKey = dateKey;
-      formattedData.push(`${coloredDate}  ${time}  ${summary}  ${calendarName}`);
+        beforeDateKey = dateKey;
+        if (time === '00:00-00:00') {
+          formattedData.push(`${coloredDate}`);
+        } else if (startTime === endTime) {
+          formattedData.push(`${coloredDate}  終日         ${summary}  ${calendarName}`);
+        } else {
+          formattedData.push(`${coloredDate}  ${time}  ${summary}  ${calendarName}`);
+        }
+      });
     });
-  });
   return formattedData;
 }
 
@@ -142,6 +186,7 @@ export async function updateTable(auth, table, calendars, events) {
   events.length = 0;
   const fetchedEvent = await fetchEventsFromDatabase(calendars);
   events.push(...fetchedEvent);
+  fillEmptyEvents(events);
   const formattedEvents = formatGroupedEvents(events);
   table.setItems(formattedEvents);
   table.select(searchIndex(new Date, events));
@@ -151,7 +196,7 @@ export async function updateTable(auth, table, calendars, events) {
 
 export function createLayout(calendars, events) {
   const calendarNames = Array.from(
-    new Set(calendars.map(calendar=> calendar.summary))
+    new Set(calendars.map(calendar => calendar.summary))
   );
 
   const commands = fetchCommandList();
@@ -204,9 +249,9 @@ export function createLayout(calendars, events) {
     label: 'Edit List',
     border: { type: 'line', fg: 'yellow' },
     style: {
-        fg: 'white',
-        bg: 'black',
-        selected: { fg: 'black', bg: 'green' }
+      fg: 'white',
+      bg: 'black',
+      selected: { fg: 'black', bg: 'green' }
     },
     hidden: true,
     mouse: true,
@@ -250,6 +295,7 @@ export function createLayout(calendars, events) {
   };
 
   const leftTable = createLeftTable(screen);
+  fillEmptyEvents(events);
   const formattedEvents = formatGroupedEvents(events);
   leftTable.setItems(formattedEvents);
   const rightGraph = createGraph(screen);
@@ -276,5 +322,5 @@ export function createLayout(calendars, events) {
     screen.render();
   });
   console.log('Create Layout');
-  return { screen, inputBox , keypressListener};
+  return { screen, inputBox, keypressListener };
 }
