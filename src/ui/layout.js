@@ -12,19 +12,15 @@ const { isHoliday } = pkg;
 
 function fillEmptyEvents(events) {
   const filledEvents = [];
-
   for (let i = 0; i < events.length; i++) {
     filledEvents.push(events[i]);
-
     if (i < events.length - 1) {
       const currentEventStart = new Date(events[i].start);
       currentEventStart.setHours(0, 0, 0, 0);
       const nextEventStart = new Date(events[i + 1].start);
       nextEventStart.setHours(0, 0, 0, 0);
-
       while (currentEventStart < nextEventStart) {
         currentEventStart.setDate(currentEventStart.getDate() + 1);
-
         if (currentEventStart < nextEventStart) {
           filledEvents.push(
             new Event(
@@ -43,7 +39,6 @@ function fillEmptyEvents(events) {
 
   events.length = 0;
   events.push(...filledEvents);
-
   return events;
 }
 
@@ -290,7 +285,9 @@ export function createLayout(calendars, events) {
   const keypressListener = (_, key) => {
     if (key.name === 'j' || key.name === 'k') {
       const currentIndex = leftTable.selected;
-      updateGraph(screen, rightGraph, currentIndex, events);
+      if (events[currentIndex].start.getDay() === 0 || events[currentIndex].start.getDay() === 1) {
+        updateGraph(screen, rightGraph, currentIndex, events);
+      }
     }
   };
 
