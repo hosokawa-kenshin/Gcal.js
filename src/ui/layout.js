@@ -17,20 +17,20 @@ function fillEmptyEvents(events) {
     filledEvents.push(events[i]);
 
     if (i < events.length - 1) {
-      const currentEventEnd = new Date(events[i].end);
-      currentEventEnd.setHours(0, 0, 0, 0);
+      const currentEventStart = new Date(events[i].start);
+      currentEventStart.setHours(0, 0, 0, 0);
       const nextEventStart = new Date(events[i + 1].start);
       nextEventStart.setHours(0, 0, 0, 0);
 
-      while (currentEventEnd < nextEventStart) {
-        currentEventEnd.setDate(currentEventEnd.getDate() + 1);
+      while (currentEventStart < nextEventStart) {
+        currentEventStart.setDate(currentEventStart.getDate() + 1);
 
-        if (currentEventEnd < nextEventStart) {
+        if (currentEventStart < nextEventStart) {
           filledEvents.push(
             new Event(
               '',
-              new Date(currentEventEnd),
-              new Date(currentEventEnd),
+              new Date(currentEventStart),
+              new Date(currentEventStart),
               '',
               null,
               null
