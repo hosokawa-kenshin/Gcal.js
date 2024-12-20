@@ -1,0 +1,4 @@
+Event Title        | 
+Date (YYYY-MM-DD)  | 
+Start Time (HH:mm) | 
+End Time (HH:mm)   | 
