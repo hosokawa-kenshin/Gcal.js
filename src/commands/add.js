@@ -39,57 +39,57 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
     const selectedCalendar = calendarNames[index];
     selectedCalendarId = calendarIDs[index];
     formBox.setLabel(`Add Event - ${selectedCalendar}`);
+    const today = new Date();
+    today.setHours(today.getHours(), 0, 0, 0);
+    const eventContent = `Event Title | 
+Date (YYYY-MM-DD) | ${today.toLocalISOString().slice(0, 10)}
+Start Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
+End Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
+`;
 
-    fs.readFile(templateFilePath, 'utf8', (err, templateContent) => {
+    fs.writeFileSync(tempFilePath, eventContent, 'utf8');
+
+    const editor = process.env.EDITOR || 'vim';
+
+    screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
       if (err) {
-        console.error('Error reading template file:', err);
+        console.error('Error opening editor:', err);
         return;
       }
 
-      fs.writeFileSync(tempFilePath, templateContent, 'utf8');
+      if (code !== true) {
+        console.log(`Editor exited with code: ${code}`);
+        return;
+      }
+      const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+      const extractDetails = (text) => {
+        const lines = text.split('\n');
+        const details = {};
 
-      const editor = process.env.EDITOR || 'vim';
+        lines.forEach(line => {
+          const parts = line.split('|').map(part => part.trim());
+          if (parts.length === 2) {
+            const [label, value] = parts;
+            details[label] = value;
+          }
+        });
 
-      screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-        if (err) {
-          console.error('Error opening editor:', err);
-          return;
-        }
+        return details;
+      };
 
-        if (code !== true) {
-          console.log(`Editor exited with code: ${code}`);
-          return;
-        }
-        const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-        const extractDetails = (text) => {
-          const lines = text.split('\n');
-          const details = {};
+      const extractedDetails = extractDetails(updatedText);
+      title = extractedDetails['Event Title'];
+      date = extractedDetails['Date (YYYY-MM-DD)'];
+      startTime = extractedDetails['Start Time (HH:mm)'];
+      endTime = extractedDetails['End Time (HH:mm)'];
 
-          lines.forEach(line => {
-            const parts = line.split('|').map(part => part.trim());
-            if (parts.length === 2) {
-              const [label, value] = parts;
-              details[label] = value;
-            }
-          });
+      formFields.title.setValue(title);
+      formFields.date.setValue(date);
+      formFields.startTime.setValue(startTime);
+      formFields.endTime.setValue(endTime);
 
-          return details;
-        };
-
-        const extractedDetails = extractDetails(updatedText);
-        title = extractedDetails['Event Title'];
-        date = extractedDetails['Date (YYYY-MM-DD)'];
-        startTime = extractedDetails['Start Time (HH:mm)'];
-        endTime = extractedDetails['End Time (HH:mm)'];
-
-        formFields.title.setValue(title);
-        formFields.date.setValue(date);
-        formFields.startTime.setValue(startTime);
-        formFields.endTime.setValue(endTime);
-
-        screen.render();
-        fs.unlinkSync(tempFilePath);
-      });
+      screen.render();
+      fs.unlinkSync(tempFilePath);
     });
     formBox.show();
     formBox.focus();
@@ -97,51 +97,54 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
   });
 
   formBox.key(['enter'], () => {
-    fs.readFile(templateFilePath, 'utf8', (err, templateContent) => {
+    const title = formFields.title.getValue().trim();
+    const date = formFields.date.getValue().trim();
+    const startTime = formFields.startTime.getValue().trim();
+    const endTime = formFields.endTime.getValue().trim();
+    const eventContent = `Event Title | ${title}
+Date (YYYY-MM-DD) | ${date}
+Start Time (HH:mm) | ${startTime}
+End Time (HH:mm) |  ${endTime}
+    `;
+    fs.writeFileSync(tempFilePath, eventContent, 'utf8');
+    const editor = process.env.EDITOR || 'vim';
+    screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
       if (err) {
-        console.error('Error reading template file:', err);
+        console.error('Error opening editor:', err);
         return;
       }
-      fs.writeFileSync(tempFilePath, templateContent, 'utf8');
-      const editor = process.env.EDITOR || 'vim';
-      screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-        if (err) {
-          console.error('Error opening editor:', err);
-          return;
-        }
-        if (code !== true) {
-          console.log(`Editor exited with code: ${code}`);
-          return;
-        }
-        const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-        const extractDetails = (text) => {
-          const lines = text.split('\n');
-          const details = {};
-          lines.forEach(line => {
-            const parts = line.split('|').map(part => part.trim());
-            if (parts.length === 2) {
-              const [label, value] = parts;
-              details[label] = value;
-            }
-          });
-          return details;
-        };
+      if (code !== true) {
+        console.log(`Editor exited with code: ${code}`);
+        return;
+      }
+      const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+      const extractDetails = (text) => {
+        const lines = text.split('\n');
+        const details = {};
+        lines.forEach(line => {
+          const parts = line.split('|').map(part => part.trim());
+          if (parts.length === 2) {
+            const [label, value] = parts;
+            details[label] = value;
+          }
+        });
+        return details;
+      };
 
-        const extractedDetails = extractDetails(updatedText);
-        title = extractedDetails['Event Title'];
-        date = extractedDetails['Date (YYYY-MM-DD)'];
-        startTime = extractedDetails['Start Time (HH:mm)'];
-        endTime = extractedDetails['End Time (HH:mm)'];
+      const extractedDetails = extractDetails(updatedText);
+      title = extractedDetails['Event Title'];
+      date = extractedDetails['Date (YYYY-MM-DD)'];
+      startTime = extractedDetails['Start Time (HH:mm)'];
+      endTime = extractedDetails['End Time (HH:mm)'];
 
-        formFields.title.setValue(title);
-        formFields.date.setValue(date);
-        formFields.startTime.setValue(startTime);
-        formFields.endTime.setValue(endTime);
+      formFields.title.setValue(title);
+      formFields.date.setValue(date);
+      formFields.startTime.setValue(startTime);
+      formFields.endTime.setValue(endTime);
 
-        screen.render();
+      screen.render();
 
-        fs.unlinkSync(tempFilePath);
-      });
+      fs.unlinkSync(tempFilePath);
     });
   });
 

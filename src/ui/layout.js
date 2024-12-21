@@ -76,7 +76,7 @@ export function searchIndex(date, events) {
   return index;
 }
 
-function updateGraph(screen, rightGraph, index, events) {
+export function updateGraph(screen, rightGraph, index, events) {
   const currentEventDate = new Date(events[index].start);
   const monday = new Date(currentEventDate);
   const currentDayOfWeek = monday.getDay();

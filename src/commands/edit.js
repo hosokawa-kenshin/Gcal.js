@@ -2,6 +2,9 @@ import { google } from 'googleapis';
 import { updateTable } from '../ui/layout.js';
 import { splitDateTimeIntoDateAndTime, convertToDateTime } from '../utils/dateUtils.js';
 import { createAddForm } from '../ui/form.js';
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 
 export function editEvent(auth, screen, calendars, index, events, allEvents) {
   const calendar = google.calendar({ version: 'v3', auth });
@@ -10,7 +13,7 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   const editCommandList = screen.children.find(child => child.options.label === 'Edit List');
   const { formBox, formFields } = createAddForm(screen);
-
+  const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
   const selectedEvent = events[index];
   const selectedCalendarId = selectedEvent.calendarId;
   const selectedEventsId = selectedEvent.id;
@@ -39,12 +42,98 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
           calendarList.hide();
           formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
           formBox.show();
-          formFields.title.focus();
-          formFields.title.setValue(selectedEvent.summary);
-          formFields.date.setValue(startDate);
-          formFields.startTime.setValue(startTime);
-          formFields.endTime.setValue(endTime);
-          screen.render();
+          formBox.focus();
+          const eventContent = `Event Title | ${selectedEvent.summary}
+Date (YYYY-MM-DD) | ${startDate}
+Start Time (HH:mm) | ${startTime}
+End Time (HH:mm) |  ${endTime}
+`;
+          fs.writeFileSync(tempFilePath, eventContent, 'utf8');
+          const editor = process.env.EDITOR || 'vim';
+          screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
+            if (err) {
+              console.error('Error opening editor:', err);
+              return;
+            }
+            if (code !== true) {
+              console.log(`Editor exited with code: ${code}`);
+              return;
+            }
+            const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+            const extractDetails = (text) => {
+              const lines = text.split('\n');
+              const details = {};
+              lines.forEach(line => {
+                const parts = line.split('|').map(part => part.trim());
+                if (parts.length === 2) {
+                  const [label, value] = parts;
+                  details[label] = value;
+                }
+              });
+              return details;
+            };
+
+            const extractedDetails = extractDetails(updatedText);
+
+            formFields.title.setValue(extractedDetails['Event Title']);
+            formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
+            formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
+            formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
+
+            screen.render();
+            fs.unlinkSync(tempFilePath);
+            screen.render();
+            formBox.key(['enter'], () => {
+              const title = formFields.title.getValue().trim();
+              const date = formFields.date.getValue().trim();
+              const startTime = formFields.startTime.getValue().trim();
+              const endTime = formFields.endTime.getValue().trim();
+              const eventContent = `Event Title | ${title}
+Date (YYYY-MM-DD) | ${date}
+Start Time (HH:mm) | ${startTime}
+End Time (HH:mm) |  ${endTime}
+`;
+              fs.writeFileSync(tempFilePath, eventContent, 'utf8');
+              const editor = process.env.EDITOR || 'vim';
+              screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
+                if (err) {
+                  console.error('Error opening editor:', err);
+                  return;
+                }
+                if (code !== true) {
+                  console.log(`Editor exited with code: ${code}`);
+                  return;
+                }
+                const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+                const extractDetails = (text) => {
+                  const lines = text.split('\n');
+                  const details = {};
+                  lines.forEach(line => {
+                    const parts = line.split('|').map(part => part.trim());
+                    if (parts.length === 2) {
+                      const [label, value] = parts;
+                      details[label] = value;
+                    }
+                  });
+                  return details;
+                };
+
+                const extractedDetails = extractDetails(updatedText);
+                title = extractedDetails['Event Title'];
+                date = extractedDetails['Date (YYYY-MM-DD)'];
+                startTime = extractedDetails['Start Time (HH:mm)'];
+                endTime = extractedDetails['End Time (HH:mm)'];
+
+                formFields.title.setValue(title);
+                formFields.date.setValue(date);
+                formFields.startTime.setValue(startTime);
+                formFields.endTime.setValue(endTime);
+
+                screen.render();
+                fs.unlinkSync(tempFilePath);
+              });
+            });
+          });
 
           formBox.key(['C-s'], () => {
             const title = formFields.title.getValue().trim();
@@ -92,8 +181,11 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
               screen.render();
             });
           });
-        });
+
+        }
+        );
         break;
+
       case 1:
         editCommandList.hide();
         calendarList.show();
@@ -105,12 +197,98 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
           calendarList.hide();
           formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
           formBox.show();
-          formFields.title.focus();
-          formFields.title.setValue(selectedEvent.summary);
-          formFields.date.setValue(startDate);
-          formFields.startTime.setValue(startTime);
-          formFields.endTime.setValue(endTime);
+          formBox.focus();
           screen.render();
+          const eventContent = `Event Title | ${selectedEvent.summary}
+Date (YYYY-MM-DD) | ${startDate}
+Start Time (HH:mm) | ${startTime}
+End Time (HH:mm) |  ${endTime}
+`;
+          fs.writeFileSync(tempFilePath, eventContent, 'utf8');
+          const editor = process.env.EDITOR || 'vim';
+          screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
+            if (err) {
+              console.error('Error opening editor:', err);
+              return;
+            }
+            if (code !== true) {
+              console.log(`Editor exited with code: ${code}`);
+              return;
+            }
+            const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+            const extractDetails = (text) => {
+              const lines = text.split('\n');
+              const details = {};
+              lines.forEach(line => {
+                const parts = line.split('|').map(part => part.trim());
+                if (parts.length === 2) {
+                  const [label, value] = parts;
+                  details[label] = value;
+                }
+              });
+              return details;
+            };
+
+            const extractedDetails = extractDetails(updatedText);
+
+            formFields.title.setValue(extractedDetails['Event Title']);
+            formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
+            formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
+            formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
+
+            screen.render();
+            fs.unlinkSync(tempFilePath);
+          });
+          formBox.key(['enter'], () => {
+            const title = formFields.title.getValue().trim();
+            const date = formFields.date.getValue().trim();
+            const startTime = formFields.startTime.getValue().trim();
+            const endTime = formFields.endTime.getValue().trim();
+            const eventContent = `Event Title | ${title}
+Date (YYYY-MM-DD) | ${date}
+Start Time (HH:mm) | ${startTime}
+End Time (HH:mm) |  ${endTime}
+`;
+            fs.writeFileSync(tempFilePath, eventContent, 'utf8');
+            const editor = process.env.EDITOR || 'vim';
+            screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
+              if (err) {
+                console.error('Error opening editor:', err);
+                return;
+              }
+              if (code !== true) {
+                console.log(`Editor exited with code: ${code}`);
+                return;
+              }
+              const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+              const extractDetails = (text) => {
+                const lines = text.split('\n');
+                const details = {};
+                lines.forEach(line => {
+                  const parts = line.split('|').map(part => part.trim());
+                  if (parts.length === 2) {
+                    const [label, value] = parts;
+                    details[label] = value;
+                  }
+                });
+                return details;
+              };
+
+              const extractedDetails = extractDetails(updatedText);
+              title = extractedDetails['Event Title'];
+              date = extractedDetails['Date (YYYY-MM-DD)'];
+              startTime = extractedDetails['Start Time (HH:mm)'];
+              endTime = extractedDetails['End Time (HH:mm)'];
+
+              formFields.title.setValue(title);
+              formFields.date.setValue(date);
+              formFields.startTime.setValue(startTime);
+              formFields.endTime.setValue(endTime);
+
+              screen.render();
+              fs.unlinkSync(tempFilePath);
+            });
+          });
 
           formBox.key(['C-s'], () => {
             const title = formFields.title.getValue().trim();
