@@ -84,10 +84,10 @@ End Time (HH:mm) |  ${endTime}
             fs.unlinkSync(tempFilePath);
             screen.render();
             formBox.key(['enter'], () => {
-              const title = formFields.title.getValue().trim();
-              const date = formFields.date.getValue().trim();
-              const startTime = formFields.startTime.getValue().trim();
-              const endTime = formFields.endTime.getValue().trim();
+              var title = formFields.title.getValue().trim();
+              var date = formFields.date.getValue().trim();
+              var startTime = formFields.startTime.getValue().trim();
+              var endTime = formFields.endTime.getValue().trim();
               const eventContent = `Event Title | ${title}
 Date (YYYY-MM-DD) | ${date}
 Start Time (HH:mm) | ${startTime}
@@ -240,10 +240,10 @@ End Time (HH:mm) |  ${endTime}
             fs.unlinkSync(tempFilePath);
           });
           formBox.key(['enter'], () => {
-            const title = formFields.title.getValue().trim();
-            const date = formFields.date.getValue().trim();
-            const startTime = formFields.startTime.getValue().trim();
-            const endTime = formFields.endTime.getValue().trim();
+            var title = formFields.title.getValue().trim();
+            var date = formFields.date.getValue().trim();
+            var startTime = formFields.startTime.getValue().trim();
+            var endTime = formFields.endTime.getValue().trim();
             const eventContent = `Event Title | ${title}
 Date (YYYY-MM-DD) | ${date}
 Start Time (HH:mm) | ${startTime}

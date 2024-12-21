@@ -3,7 +3,6 @@ import { updateTable } from '../ui/layout.js';
 import { convertToDateTime } from '../utils/dateUtils.js';
 import { createAddForm } from '../ui/form.js';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import os from 'os';
 import fs from 'fs';
 
@@ -14,9 +13,6 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const { formBox, formFields } = createAddForm(screen);
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const templateFilePath = path.join(__dirname, '../../template.txt');
   const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
 
   var selectedCalendarId = null;
@@ -97,10 +93,10 @@ End Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
   });
 
   formBox.key(['enter'], () => {
-    const title = formFields.title.getValue().trim();
-    const date = formFields.date.getValue().trim();
-    const startTime = formFields.startTime.getValue().trim();
-    const endTime = formFields.endTime.getValue().trim();
+    var title = formFields.title.getValue().trim();
+    var date = formFields.date.getValue().trim();
+    var startTime = formFields.startTime.getValue().trim();
+    var endTime = formFields.endTime.getValue().trim();
     const eventContent = `Event Title | ${title}
 Date (YYYY-MM-DD) | ${date}
 Start Time (HH:mm) | ${startTime}
