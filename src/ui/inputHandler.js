@@ -6,33 +6,33 @@ import { syncCommand } from '../commands/sync.js';
 import { findCommand } from '../commands/find.js';
 import { jumpCommand } from '../commands/jump.js';
 
-export function handleInput(auth, inputBox, screen, calendars, events, keypressListener) {
+export function handleInput(auth, inputBox, screen, calendars, events, allEvents, keypressListener) {
 
   const [command, ...args] = inputBox.trim().split(/\s+/);
 
   switch (command) {
     case 'add':
-      addEvent(auth, screen, calendars, events);
+      addEvent(auth, screen, calendars, events, allEvents);
       break;
     case 'rm':
       break;
     case 'md':
-      markdownCommand(auth, screen, calendars, args);
+      markdownCommand(auth, screen, calendars, allEvents, args);
       break;
     case 'config':
-      configCommand(auth, screen, calendars, events);
+      configCommand(auth, screen, calendars, events, allEvents);
       break;
     case 'sync':
     case 's':
-      syncCommand(auth, screen, calendars, events, keypressListener);
+      syncCommand(auth, screen, calendars, events, allEvents, keypressListener);
       break;
     case 'find':
     case 'f':
-      findCommand(screen, events, args, keypressListener);
+      findCommand(screen, events, allEvents, args, keypressListener);
       break;
     case 'jump':
     case 'j':
-      jumpCommand(screen, events, args);
+      jumpCommand(screen, events, allEvents, args);
       break;
     case 'help':
       helpEvent(screen);
@@ -41,5 +41,5 @@ export function handleInput(auth, inputBox, screen, calendars, events, keypressL
       process.exit(0);
     default:
       break;
-    }
+  }
 }

@@ -7,15 +7,19 @@ import { fileURLToPath } from 'url';
 import os from 'os';
 import fs from 'fs';
 
-export function addEvent(auth, screen, calendars, events) {
+export function addEvent(auth, screen, calendars, events, allEvents) {
   const calendar = google.calendar({ version: 'v3', auth });
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
   const inputBox = screen.children.find(child => child.options.label === 'Commandline');
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const { formBox, formFields } = createAddForm(screen);
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
-  var selectedCalendarId = null;
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const templateFilePath = path.join(__dirname, '../../template.txt');
+  const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
 
+  var selectedCalendarId = null;
   var title = null;
   var date = null;
   var startTime = null;
@@ -35,12 +39,6 @@ export function addEvent(auth, screen, calendars, events) {
     const selectedCalendar = calendarNames[index];
     selectedCalendarId = calendarIDs[index];
     formBox.setLabel(`Add Event - ${selectedCalendar}`);
-
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-
-    const templateFilePath = path.join(__dirname, '../../template.txt');
-    const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
 
     fs.readFile(templateFilePath, 'utf8', (err, templateContent) => {
       if (err) {
@@ -63,7 +61,6 @@ export function addEvent(auth, screen, calendars, events) {
           return;
         }
         const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-        console.log(updatedText);
         const extractDetails = (text) => {
           const lines = text.split('\n');
           const details = {};
@@ -91,17 +88,62 @@ export function addEvent(auth, screen, calendars, events) {
         formFields.endTime.setValue(endTime);
 
         screen.render();
-
-        console.log(extractedDetails);
-
         fs.unlinkSync(tempFilePath);
       });
     });
     formBox.show();
+    formBox.focus();
     screen.render();
-    formFields.title.focus();
   });
 
+  formBox.key(['enter'], () => {
+    fs.readFile(templateFilePath, 'utf8', (err, templateContent) => {
+      if (err) {
+        console.error('Error reading template file:', err);
+        return;
+      }
+      fs.writeFileSync(tempFilePath, templateContent, 'utf8');
+      const editor = process.env.EDITOR || 'vim';
+      screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
+        if (err) {
+          console.error('Error opening editor:', err);
+          return;
+        }
+        if (code !== true) {
+          console.log(`Editor exited with code: ${code}`);
+          return;
+        }
+        const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+        const extractDetails = (text) => {
+          const lines = text.split('\n');
+          const details = {};
+          lines.forEach(line => {
+            const parts = line.split('|').map(part => part.trim());
+            if (parts.length === 2) {
+              const [label, value] = parts;
+              details[label] = value;
+            }
+          });
+          return details;
+        };
+
+        const extractedDetails = extractDetails(updatedText);
+        title = extractedDetails['Event Title'];
+        date = extractedDetails['Date (YYYY-MM-DD)'];
+        startTime = extractedDetails['Start Time (HH:mm)'];
+        endTime = extractedDetails['End Time (HH:mm)'];
+
+        formFields.title.setValue(title);
+        formFields.date.setValue(date);
+        formFields.startTime.setValue(startTime);
+        formFields.endTime.setValue(endTime);
+
+        screen.render();
+
+        fs.unlinkSync(tempFilePath);
+      });
+    });
+  });
 
   formBox.key(['C-s'], () => {
 
@@ -130,7 +172,7 @@ export function addEvent(auth, screen, calendars, events) {
       resource: event,
     }, async (err, res) => {
       if (err) return console.error('The API returned an error: ' + err);
-      await updateTable(auth, leftTable, calendars, events);
+      await updateTable(auth, leftTable, calendars, events, allEvents);
       logTable.log('Event successfully registered!');
       formBox.destroy();
       screen.render();

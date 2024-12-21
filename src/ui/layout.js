@@ -10,7 +10,7 @@ import Event from '../models/event.js';
 import pkg from 'japanese-holidays';
 const { isHoliday } = pkg;
 
-function fillEmptyEvents(events) {
+export function fillEmptyEvents(events) {
   const filledEvents = [];
   for (let i = 0; i < events.length; i++) {
     filledEvents.push(events[i]);
@@ -175,12 +175,14 @@ export function formatGroupedEvents(events) {
   return formattedData;
 }
 
-export async function updateTable(auth, table, calendars, events) {
+export async function updateTable(auth, table, calendars, events, allEvents) {
   const newEvents = await fetchEvents(auth, calendars);
   await insertEventsToDatabase(newEvents);
-  events.length = 0;
+  allEvents.length = 0;
   const fetchedEvent = await fetchEventsFromDatabase(calendars);
-  events.push(...fetchedEvent);
+  allEvents.push(...fetchedEvent);
+  events.length = 0;
+  events.push(...allEvents.filter((event) => event.start.getFullYear() === new Date().getFullYear() || event.start.getFullYear() === new Date().getFullYear() + 1 || event.start.getFullYear() === new Date().getFullYear() - 1));
   fillEmptyEvents(events);
   const formattedEvents = formatGroupedEvents(events);
   table.setItems(formattedEvents);

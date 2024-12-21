@@ -3,7 +3,7 @@ import { configCalendarListInDatabase, fetchCalendarsFromDatabase } from '../ser
 import { fetchCalendars } from '../services/calendarService.js';
 import { updateTable } from '../ui/layout.js';
 
-export async function configCommand(auth, screen, calendars, events) {
+export async function configCommand(auth, screen, calendars, events, allEvents) {
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const inputBox = screen.children.find(child => child.options.label === 'Commandline');
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
@@ -67,7 +67,7 @@ export async function configCommand(auth, screen, calendars, events) {
         .map(({ id }) => id);
       await configCalendarListInDatabase(selectedCalendars);
       const fetchedcalendars = await fetchCalendarsFromDatabase();
-      await updateTable(auth, leftTable, fetchedcalendars, events);
+      await updateTable(auth, leftTable, fetchedcalendars, events, allEvents);
       calendars.length = 0;
       calendars.push(...fetchedcalendars);
       calendarList.setItems(calendars.map(calendar => calendar.summary));

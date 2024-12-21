@@ -3,13 +3,13 @@ import { updateTable } from '../ui/layout.js';
 import { splitDateTimeIntoDateAndTime, convertToDateTime } from '../utils/dateUtils.js';
 import { createAddForm } from '../ui/form.js';
 
-export function editEvent(auth, screen, calendars, index, events) {
+export function editEvent(auth, screen, calendars, index, events, allEvents) {
   const calendar = google.calendar({ version: 'v3', auth });
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   const editCommandList = screen.children.find(child => child.options.label === 'Edit List');
-  const {formBox, formFields} = createAddForm(screen);
+  const { formBox, formFields } = createAddForm(screen);
 
   const selectedEvent = events[index];
   const selectedCalendarId = selectedEvent.calendarId;
@@ -17,10 +17,10 @@ export function editEvent(auth, screen, calendars, index, events) {
   const { date: startDate, time: startTime } = splitDateTimeIntoDateAndTime(selectedEvent.start);
   const { date: endDate, time: endTime } = splitDateTimeIntoDateAndTime(selectedEvent.end);
   const calendarNames = Array.from(
-    new Set(calendars.map(calendar=> calendar.summary))
+    new Set(calendars.map(calendar => calendar.summary))
   );
   const calendarIDs = Array.from(
-    new Set(calendars.map(calendar=> calendar.id))
+    new Set(calendars.map(calendar => calendar.id))
   );
 
   editCommandList.show();
@@ -82,9 +82,9 @@ export function editEvent(auth, screen, calendars, index, events) {
             calendar.events.insert({
               calendarId: selectedEditCalendarId,
               resource: event,
-            }, async(err, res) => {
+            }, async (err, res) => {
               if (err) return console.error('The API returned an error: ' + err);
-              await updateTable(auth, leftTable, calendars, events);
+              await updateTable(auth, leftTable, calendars, events, allEvents);
               logTable.log('Event successfully moved!');
               formBox.destroy();
               screen.render();
@@ -141,9 +141,9 @@ export function editEvent(auth, screen, calendars, index, events) {
             calendar.events.insert({
               calendarId: selectedEditCalendarId,
               resource: event,
-            }, async(err, res) => {
+            }, async (err, res) => {
               if (err) return console.error('The API returned an error: ' + err);
-              await updateTable(auth, leftTable, calendars, events);
+              await updateTable(auth, leftTable, calendars, events, allEvents);
               logTable.log('Event successfully registered!');
               formBox.destroy();
               screen.render();
@@ -164,7 +164,7 @@ export function editEvent(auth, screen, calendars, index, events) {
               console.error('The API returned an error: ' + err);
               return;
             }
-            await updateTable(auth, leftTable, calendars, events);
+            await updateTable(auth, leftTable, calendars, events, allEvents);
             logTable.log('Event successfully deleted!');
             editCommandList.hide();
             screen.render();
