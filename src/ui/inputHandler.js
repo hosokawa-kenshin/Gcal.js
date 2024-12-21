@@ -17,7 +17,7 @@ export function handleInput(auth, inputBox, screen, calendars, events, allEvents
     case 'rm':
       break;
     case 'md':
-      markdownCommand(auth, screen, calendars, allEvents, args);
+      markdownCommand(auth, screen, calendars, args);
       break;
     case 'config':
       configCommand(auth, screen, calendars, events, allEvents);

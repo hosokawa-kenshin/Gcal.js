@@ -26,7 +26,6 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
     new Set(calendars.map(calendar => calendar.id))
   );
 
-  logTable.log(selectedEvent.id);
   editCommandList.show();
   screen.render();
   editCommandList.focus();
