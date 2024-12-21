@@ -1,6 +1,51 @@
 import sqlite3 from "sqlite3";
 import { Calendar } from "../models/calendar.js";
 import { Event } from "../models/event.js";
+import { calendar } from "googleapis/build/src/apis/calendar/index.js";
+
+export async function mergeDuplicateEvents() {
+  const db = new sqlite3.Database("./db/Gcal.db");
+
+  const duplicates = await allQuery(db, `
+    SELECT id, COUNT(*) as count
+    FROM Events
+    GROUP BY id
+    HAVING count > 1
+  `);
+
+  for (const duplicate of duplicates) {
+    const { id } = duplicate;
+
+    const events = await allQuery(db, `
+      SELECT *
+      FROM Events
+      WHERE id = ?
+    `, [id]);
+
+    const mergedEvent = events.reduce((acc, event) => {
+      return {
+        id: event.id,
+        start: event.start,
+        end: event.end,
+        summary: event.summary,
+        calendarId: event.calendarId,
+        calendarName: event.calendarName,
+      };
+    }, {});
+
+    await runQuery(db, `
+      DELETE FROM Events
+      WHERE id = ?
+    `, [id]);
+
+    await runQuery(db, `
+      INSERT INTO Events (id, start, end, summary, calendarId, calendarName)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [mergedEvent.id, new Date(mergedEvent.start).toISOString(), new Date(mergedEvent.end).toISOString(), mergedEvent.summary, mergedEvent.calendarId, mergedEvent.calendarName]);
+  }
+
+  db.close();
+}
 
 export async function ensureSyncTokenColumn() {
   const db = new sqlite3.Database("./db/Gcal.db");
@@ -35,7 +80,7 @@ function runQuery(db, query, params = []) {
   });
 }
 
-export async function setSyncTokenInDatabase(calendar){
+export async function setSyncTokenInDatabase(calendar) {
   const db = new sqlite3.Database("./db/Gcal.db");
   await runQuery(db, "UPDATE Calendars SET syncToken = ? WHERE id = ?", [calendar.syncToken, calendar.id]);
   await new Promise((resolve, reject) => {
@@ -51,7 +96,7 @@ export async function setSyncTokenInDatabase(calendar){
   });
 }
 
-export async function configCalendarListInDatabase(calendarIDs){
+export async function configCalendarListInDatabase(calendarIDs) {
   const db = new sqlite3.Database("./db/Gcal.db");
 
   for (const id of calendarIDs) {
@@ -72,7 +117,7 @@ export async function configCalendarListInDatabase(calendarIDs){
     });
   });
 }
-export async function deleteEventsFromDatabase(events){
+export async function deleteEventsFromDatabase(events) {
   const db = new sqlite3.Database("./db/Gcal.db");
   await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
   if (events.length > 0) {
@@ -82,7 +127,7 @@ export async function deleteEventsFromDatabase(events){
   }
 }
 
-export async function insertCalendarListToDatabase(calendars){
+export async function insertCalendarListToDatabase(calendars) {
   const db = new sqlite3.Database("./db/Gcal.db");
   await runQuery(db, "CREATE TABLE IF NOT EXISTS Calendars (id TEXT, summary TEXT, subscription BOOLEAN DEFAULT 1, syncToken TEXT DEFAULT NULL)");
   for (const calendar of calendars) {
@@ -100,10 +145,10 @@ export async function insertCalendarListToDatabase(calendars){
   });
 }
 
-export async function insertEventsToDatabase(events){
+export async function insertEventsToDatabase(events) {
   const db = new sqlite3.Database("./db/Gcal.db");
   await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
-  if (events.length > 0){
+  if (events.length > 0) {
     events.forEach(async event => {
       await runQuery(db, "INSERT INTO Events (id, start, end, summary, calendarId, calendarName) VALUES (?, ?, ?, ?, ?, ?)", [event.id, event.start.toISOString(), event.end.toISOString(), event.summary, event.calendarId, event.calendarName]);
     });
@@ -120,14 +165,14 @@ export async function insertEventsToDatabase(events){
   });
 }
 
-export async function fetchEventsFromDatabase(calendars){
+export async function fetchEventsFromDatabase(calendars) {
   const db = new sqlite3.Database("./db/Gcal.db");
   const events = [];
   await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
   await new Promise((resolve, reject) => {
     for (const calendar of calendars) {
       db.each(
-        "SELECT * FROM Events WHERE calendarId = ?",[calendar.id],
+        "SELECT * FROM Events WHERE calendarId = ?", [calendar.id],
         (err, row) => {
           if (err) {
             console.error("Error fetching data:", err.message);
@@ -146,8 +191,9 @@ export async function fetchEventsFromDatabase(calendars){
             resolve();
           }
         }
-      );}
+      );
     }
+  }
   );
   await new Promise((resolve, reject) => {
     db.close((err) => {
@@ -163,7 +209,7 @@ export async function fetchEventsFromDatabase(calendars){
   return events;
 }
 
-export async function fetchCalendarsFromDatabase(){
+export async function fetchCalendarsFromDatabase() {
   const db = new sqlite3.Database("./db/Gcal.db");
 
   const calendars = [];
@@ -175,7 +221,7 @@ export async function fetchCalendarsFromDatabase(){
           console.error("Error fetching data:", err.message);
           reject(err);
         } else {
-          if (row.subscription){
+          if (row.subscription) {
             calendars.push(new Calendar(row.id, row.summary, row.syncToken));
             // console.log("Fetched from the database:", row.summary);
           }
