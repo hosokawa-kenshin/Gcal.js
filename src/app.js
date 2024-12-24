@@ -3,6 +3,7 @@ import { createLayout } from './ui/layout.js';
 import { handleInput } from './ui/inputHandler.js';
 import { authorize, initializeCalendars, initializeEvents } from './services/calendarService.js';
 import { editEvent } from './commands/edit.js';
+import { addEvent } from './commands/add.js';
 
 export async function runApp() {
   console.log('Running app ...');
@@ -32,5 +33,6 @@ export async function runApp() {
 
 
   screen.key(['q', 'C-c'], () => process.exit(0));
+  screen.key(['a'], () => addEvent(auth, screen, calendars, events, allEvents));
   screen.render();
 }

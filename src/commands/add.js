@@ -29,6 +29,7 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
   );
 
   calendarList.show();
+  screen.render();
   calendarList.focus();
   calendarList.once('select', (item, index) => {
     calendarList.hide();
