@@ -1,5 +1,5 @@
-export function setupVimKeysForNavigation(widget, screen, focusbackto) {
-    screen.key(['j', 'k', 'h'], (ch, key) => {
+export function setupVimKeysForNavigation(widget, screen, focusbackwith) {
+    screen.key(['j', 'k', 'h', 'l'], (ch, key) => {
         if (screen.focused === widget) {
             if (ch === 'j') {
                 if (widget.rows) {
@@ -13,16 +13,12 @@ export function setupVimKeysForNavigation(widget, screen, focusbackto) {
                 } else if (widget.up) {
                     widget.up();
                 }
-            } else if (ch === 'h') {
-                if (focusbackto) {
-                    if (widget.rows) {
-                        widget.rows.select(0);
-                    } else if (widget.select) {
-                        widget.select(0);
-                    }
-                    focusbackto.focus();
+            } else if (ch === 'h' || ch === 'l') {
+                if (focusbackwith && focusbackwith.visible) {
+                    focusbackwith.focus();
                 }
             }
+
             screen.render();
         }
     });
