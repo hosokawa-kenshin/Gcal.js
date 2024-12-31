@@ -4,7 +4,7 @@ import { insertEventsToDatabase, fetchEventsFromDatabase } from '../services/dat
 import { fetchCommandList } from '../services/commandService.js';
 import { setupVimKeysForNavigation } from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
-import { createLeftTable, createLogTable } from './table.js';
+import { createEventTable, createLeftTable, createLogTable } from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
 import Event from '../models/event.js';
 import pkg from 'japanese-holidays';
@@ -120,7 +120,7 @@ function colorDate(dateKey, color) {
   return dateKey;
 }
 
-function groupEventsByDate(events) {
+export function groupEventsByDate(events) {
   return events.reduce((grouped, event) => {
     var dateKey = event.start.toLocalISOString().split('T')[0];
     var year = Number(event.start.toLocalISOString().split('-')[0]);
@@ -172,6 +172,58 @@ export function formatGroupedEvents(events) {
         }
       });
     });
+  return formattedData;
+}
+
+export function formatGroupedEventsDescending(events) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const groupedEvents = groupEventsByDate(events);
+
+  const filteredGroupedEvents = Object.entries(groupedEvents)
+    .filter(([_, eventList]) => {
+      return eventList.some(event => new Date(event.start) < now);
+    })
+    .sort(([dateA], [dateB]) => new Date(dateB) - new Date(dateA));
+
+  const formattedData = [];
+  let beforeDateKey = null;
+
+  filteredGroupedEvents.forEach(([dateKey, events]) => {
+    events.forEach(event => {
+      const startTime = event.start.toTimeString().slice(0, 5);
+      const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
+      const time = endTime ? `${startTime}-${endTime}` : startTime;
+      const summary = event.summary;
+      const calendarName = `[${event.calendarName}]`;
+      let coloredDate = dateKey;
+
+      if (dateKey === beforeDateKey) {
+        coloredDate = "".padEnd(dateKey.length);
+      } else {
+        const date = new Date(event.start);
+        const day = date.getDay();
+        if (day === 6) {
+          coloredDate = colorDate(dateKey, 'blue');
+        } else if (day === 0 || isHoliday(date)) {
+          coloredDate = colorDate(dateKey, 'red');
+        } else {
+          coloredDate = colorDate(dateKey, 'normal');
+        }
+      }
+
+      beforeDateKey = dateKey;
+
+      if (time === '00:00-00:00') {
+        formattedData.push(`${coloredDate}`);
+      } else if (startTime === endTime) {
+        formattedData.push(`${coloredDate}  終日         ${summary}  ${calendarName}`);
+      } else {
+        formattedData.push(`${coloredDate}  ${time}  ${summary}  ${calendarName}`);
+      }
+    });
+  });
+
   return formattedData;
 }
 
@@ -242,7 +294,7 @@ export function createLayout(calendars, events) {
     left: 'center',
     width: '50%',
     height: '30%',
-    items: ['編集', 'コピー', '削除'],
+    items: ['編集', 'コピー', '削除', '追加'],
     label: 'Edit List',
     border: { type: 'line', fg: 'yellow' },
     style: {
@@ -296,7 +348,10 @@ export function createLayout(calendars, events) {
   const leftTable = createLeftTable(screen);
   fillEmptyEvents(events);
   const formattedEvents = formatGroupedEvents(events);
+  const eventTable = createEventTable(screen);
+  const currentEvents = formatGroupedEventsDescending(events);
   leftTable.setItems(formattedEvents);
+  eventTable.setItems(currentEvents);
   const rightGraph = createGraph(screen);
   leftTable.on('keypress', keypressListener);
   const logTable = createLogTable(screen);
@@ -310,10 +365,11 @@ export function createLayout(calendars, events) {
   screen.append(editCalendarCommandList);
   screen.append(commandList);
   screen.append(commandDetailsBox);
+  setupVimKeysForNavigation(leftTable, screen, null);
   setupVimKeysForNavigation(list, screen, null);
   setupVimKeysForNavigation(commandList, screen, null);
   setupVimKeysForNavigation(editCalendarCommandList, screen, null);
-
+  setupVimKeysForNavigation(eventTable, screen, null);
   leftTable.focus();
   leftTable.key(['space'], () => {
     inputBox.show();
