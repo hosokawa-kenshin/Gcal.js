@@ -10,8 +10,97 @@ import Event from '../models/event.js';
 import pkg from 'japanese-holidays';
 const { isHoliday } = pkg;
 
-export function fillEmptyEvents(events) {
+export function fillEmptyEvents(events, date) {
   const filledEvents = [];
+  if (date) {
+    const lastEventDate = new Date(`${date.getFullYear() + 1}-12-31T23:59:00`);
+    const filledDate = new Date(`${date.getFullYear() - 1}-01-01T00:00:00`);
+    filledDate.setHours(0, 0, 0, 0);
+    if (events.length === 0) {
+      while (filledDate < lastEventDate) {
+        filledDate.setDate(filledDate.getDate() + 1);
+        filledEvents.push(
+          new Event(
+            '',
+            new Date(filledDate),
+            new Date(filledDate),
+            '',
+            null,
+            null
+          )
+        );
+      }
+      events.length = 0;
+      events.push(...filledEvents);
+      return events;
+    }
+
+    const firstEventDate = new Date(events[0].start);
+    firstEventDate.setHours(0, 0, 0, 0);
+    while (filledDate < firstEventDate) {
+      filledDate.setDate(filledDate.getDate() + 1);
+      if (filledDate < firstEventDate) {
+        filledEvents.push(
+          new Event(
+            '',
+            new Date(filledDate),
+            new Date(filledDate),
+            '',
+            null,
+            null
+          )
+        );
+      }
+    }
+
+    for (let i = 0; i < events.length; i++) {
+      filledEvents.push(events[i]);
+      if (i < events.length - 1) {
+        const currentEventStart = new Date(events[i].start);
+        currentEventStart.setHours(0, 0, 0, 0);
+        const nextEventStart = new Date(events[i + 1].start);
+        nextEventStart.setHours(0, 0, 0, 0);
+        while (currentEventStart < nextEventStart) {
+          currentEventStart.setDate(currentEventStart.getDate() + 1);
+          if (currentEventStart < nextEventStart) {
+            filledEvents.push(
+              new Event(
+                '',
+                new Date(currentEventStart),
+                new Date(currentEventStart),
+                '',
+                null,
+                null
+              )
+            );
+          }
+        }
+      }
+    }
+
+    const filledDate2 = new Date(events[events.length - 1].start);
+    filledDate2.setHours(0, 0, 0, 0);
+    while (filledDate2 < lastEventDate) {
+      filledDate2.setDate(filledDate2.getDate() + 1);
+      if (filledDate2 < lastEventDate) {
+        filledEvents.push(
+          new Event(
+            '',
+            new Date(filledDate2),
+            new Date(filledDate2),
+            '',
+            null,
+            null
+          )
+        );
+      }
+    }
+
+    events.length = 0;
+    events.push(...filledEvents);
+    return events;
+  }
+
   for (let i = 0; i < events.length; i++) {
     filledEvents.push(events[i]);
     if (i < events.length - 1) {
@@ -235,7 +324,7 @@ export async function updateTable(auth, table, calendars, events, allEvents) {
   allEvents.push(...fetchedEvent);
   events.length = 0;
   events.push(...allEvents.filter((event) => event.start.getFullYear() === new Date().getFullYear() || event.start.getFullYear() === new Date().getFullYear() + 1 || event.start.getFullYear() === new Date().getFullYear() - 1));
-  fillEmptyEvents(events);
+  fillEmptyEvents(events, new Date());
   const formattedEvents = formatGroupedEvents(events);
   table.setItems(formattedEvents);
   table.select(searchIndex(new Date, events));
@@ -346,7 +435,7 @@ export function createLayout(calendars, events) {
   };
 
   const leftTable = createLeftTable(screen);
-  fillEmptyEvents(events);
+  fillEmptyEvents(events, new Date());
   const formattedEvents = formatGroupedEvents(events);
   const eventTable = createEventTable(screen);
   const currentEvents = formatGroupedEventsDescending(events);

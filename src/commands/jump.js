@@ -8,10 +8,11 @@ export function jumpCommand(screen, events, allEvents, args) {
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   var index = null;
   if (args.length === 0) {
+    const date = new Date();
     events.length = 0;
     events.push(...allEvents.filter(event => event.start.getFullYear() === new Date().getFullYear() || event.start.getFullYear() === new Date().getFullYear() + 1 || event.start.getFullYear() === new Date().getFullYear() - 1));
     events.sort((a, b) => a.start - b.start);
-    fillEmptyEvents(events);
+    fillEmptyEvents(events, date);
     const formattedEvents = formatGroupedEvents(events);
     leftTable.setItems(formattedEvents);
     index = searchIndex(new Date, events);
@@ -31,7 +32,7 @@ export function jumpCommand(screen, events, allEvents, args) {
   events.length = 0;
   events.push(...allEvents.filter(event => event.start.getFullYear() === date.getFullYear() || event.start.getFullYear() === date.getFullYear() + 1 || event.start.getFullYear() === date.getFullYear() - 1));
   events.sort((a, b) => a.start - b.start);
-  fillEmptyEvents(events);
+  fillEmptyEvents(events, date);
   const formattedEvents = formatGroupedEvents(events);
   leftTable.setItems(formattedEvents);
   index = searchIndex(date, events);
