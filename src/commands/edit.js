@@ -357,12 +357,12 @@ End Time (HH:mm) |  ${endTime}
         eventTable.focus();
         screen.render();
         const now = new Date();
-        now.setHours(0, 0, 0, 0);
+        now.setHours(23, 59, 59, 99);
         const groupedEvents = groupEventsByDate(events);
 
         const filteredGroupedEvents = Object.entries(groupedEvents)
           .filter(([_, eventList]) => {
-            return eventList.some(event => new Date(event.start) < now);
+            return eventList.some(event => new Date(event.start) <= now);
           })
           .sort(([dateA], [dateB]) => new Date(dateB) - new Date(dateA));
 
