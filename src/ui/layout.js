@@ -266,7 +266,7 @@ export function formatGroupedEvents(events) {
 
 export function formatGroupedEventsDescending(events) {
   const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  now.setHours(23, 59, 59, 99);
   const groupedEvents = groupEventsByDate(events);
 
   const filteredGroupedEvents = Object.entries(groupedEvents)
