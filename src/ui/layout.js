@@ -332,6 +332,25 @@ export async function updateTable(auth, table, calendars, events, allEvents) {
   table.screen.render();
 }
 
+export function updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, message) {
+  events.length = 0;
+  events.push(...allEvents.filter(event => 
+    event.start.getFullYear() === targetDate.getFullYear() || 
+    event.start.getFullYear() === targetDate.getFullYear() + 1 || 
+    event.start.getFullYear() === targetDate.getFullYear() - 1
+  ));
+  events.sort((a, b) => a.start - b.start);
+  fillEmptyEvents(events, targetDate);
+  const formattedEvents = formatGroupedEvents(events);
+  leftTable.setItems(formattedEvents);
+  index = searchIndex(targetDate, events);
+  leftTable.select(index);
+  leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
+  updateGraph(screen, rightGraph, index, events);
+  logTable.log(message);
+  screen.render();
+}
+
 export function createLayout(calendars, events) {
   const calendarNames = Array.from(
     new Set(calendars.map(calendar => calendar.summary))
