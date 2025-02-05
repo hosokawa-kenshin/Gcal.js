@@ -32,7 +32,164 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
   editCommandList.focus();
   editCommandList.once('select', (item, index) => {
     switch (index) {
+
       case 0:
+        editCommandList.hide();
+        calendarList.show();
+        calendarList.focus();
+        screen.render();
+        calendarList.once('select', (item, index) => {
+          const selectedEditCalendar = calendarNames[index];
+          const selectedEditCalendarId = calendarIDs[index];
+          calendarList.hide();
+          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
+          formBox.show();
+          formBox.focus();
+          screen.render();
+
+          const originEvent = selectedEvent;
+          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
+          formBox.show();
+          formBox.focus();
+          screen.render();
+          const { date: sDate, time: sTime } = splitDateTimeIntoDateAndTime(originEvent.start);
+          const { date: eDate, time: eTime } = splitDateTimeIntoDateAndTime(originEvent.end);
+
+          const eventContent = `Event Title | 
+Date (YYYY-MM-DD) | ${startDate}
+Start Time (HH:mm) | ${sTime}
+End Time (HH:mm) |  ${eTime}
+`;
+
+          fs.writeFileSync(tempFilePath, eventContent, 'utf8');
+          const editor = process.env.EDITOR || 'vim';
+          screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
+            if (err) {
+              console.error('Error opening editor:', err);
+              return;
+            }
+            if (code !== true) {
+              console.log(`Editor exited with code: ${code}`);
+              return;
+            }
+            const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+            const extractDetails = (text) => {
+              const lines = text.split('\n');
+              const details = {};
+              lines.forEach(line => {
+                const parts = line.split('|').map(part => part.trim());
+                if (parts.length === 2) {
+                  const [label, value] = parts;
+                  details[label] = value;
+                }
+              });
+              return details;
+            };
+
+            const extractedDetails = extractDetails(updatedText);
+
+            formFields.title.setValue(extractedDetails['Event Title']);
+            formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
+            formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
+            formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
+
+            screen.render();
+            fs.unlinkSync(tempFilePath);
+          });
+          formBox.key(['enter'], () => {
+            var title = formFields.title.getValue().trim();
+            var date = formFields.date.getValue().trim();
+            var startTime = formFields.startTime.getValue().trim();
+            var endTime = formFields.endTime.getValue().trim();
+            const eventContent = `Event Title | ${title}
+      Date (YYYY-MM-DD) | ${date}
+      Start Time (HH:mm) | ${startTime}
+      End Time (HH:mm) |  ${endTime}
+      `;
+            fs.writeFileSync(tempFilePath, eventContent, 'utf8');
+            const editor = process.env.EDITOR || 'vim';
+            screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
+              if (err) {
+                console.error('Error opening editor:', err);
+                return;
+              }
+              if (code !== true) {
+                console.log(`Editor exited with code: ${code}`);
+                return;
+              }
+              const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+              const extractDetails = (text) => {
+                const lines = text.split('\n');
+                const details = {};
+                lines.forEach(line => {
+                  const parts = line.split('|').map(part => part.trim());
+                  if (parts.length === 2) {
+                    const [label, value] = parts;
+                    details[label] = value;
+                  }
+                });
+                return details;
+              };
+
+              const extractedDetails = extractDetails(updatedText);
+              title = extractedDetails['Event Title'];
+              date = extractedDetails['Date (YYYY-MM-DD)'];
+              startTime = extractedDetails['Start Time (HH:mm)'];
+              endTime = extractedDetails['End Time (HH:mm)'];
+
+              formFields.title.setValue(title);
+              formFields.date.setValue(date);
+              formFields.startTime.setValue(startTime);
+              formFields.endTime.setValue(endTime);
+
+              screen.render();
+              fs.unlinkSync(tempFilePath);
+            });
+          });
+
+          formBox.key(['C-s'], () => {
+            const title = formFields.title.getValue().trim();
+            const date = formFields.date.getValue().trim();
+            const startTime = formFields.startTime.getValue().trim();
+            const endTime = formFields.endTime.getValue().trim();
+
+            formBox.hide();
+
+            Object.values(formFields).forEach(field => field.clearValue());
+
+            if (!title || !date || !startTime || !endTime) {
+              logTable.log('Error: All fields must be filled in.');
+              screen.render();
+              return;
+            }
+
+            const event = {
+              summary: title,
+              start: {
+                dateTime: convertToDateTime(date, startTime).toISOString(),
+              },
+              end: {
+                dateTime: convertToDateTime(date, endTime).toISOString(),
+              },
+            };
+
+            calendar.events.insert({
+              calendarId: selectedEditCalendarId,
+              resource: event,
+            }, async (err, res) => {
+              if (err) return console.error('The API returned an error: ' + err);
+              await updateTable(auth, leftTable, calendars, events, allEvents);
+              logTable.log('Event successfully registered!');
+              formBox.destroy();
+              screen.render();
+              leftTable.focus();
+              screen.render();
+            });
+          });
+        });
+        break;
+
+      case 2:
         editCommandList.hide();
         calendarList.show();
         calendarList.focus();
@@ -332,7 +489,7 @@ End Time (HH:mm) |  ${endTime}
           });
         });
         break;
-      case 2:
+      case 3:
         calendar.events.delete(
           {
             calendarId: selectedCalendarId,
@@ -350,7 +507,7 @@ End Time (HH:mm) |  ${endTime}
           }
         );
         break;
-      case 3:
+      case 4:
         screen.append(eventTable);
         eventTable.show();
         editCommandList.hide();
@@ -517,8 +674,8 @@ End Time (HH:mm) |  ${endTime}
               screen.render();
             });
           });
-
         });
+        break;
       default:
         break;
     }

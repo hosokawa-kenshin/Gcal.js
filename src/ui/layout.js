@@ -334,9 +334,9 @@ export async function updateTable(auth, table, calendars, events, allEvents) {
 
 export function updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, message) {
   events.length = 0;
-  events.push(...allEvents.filter(event => 
-    event.start.getFullYear() === targetDate.getFullYear() || 
-    event.start.getFullYear() === targetDate.getFullYear() + 1 || 
+  events.push(...allEvents.filter(event =>
+    event.start.getFullYear() === targetDate.getFullYear() ||
+    event.start.getFullYear() === targetDate.getFullYear() + 1 ||
     event.start.getFullYear() === targetDate.getFullYear() - 1
   ));
   events.sort((a, b) => a.start - b.start);
@@ -402,7 +402,7 @@ export function createLayout(calendars, events) {
     left: 'center',
     width: '50%',
     height: '30%',
-    items: ['編集', 'コピー', '削除', '追加'],
+    items: ['この日に新しいイベントを追加', 'このイベントを編集', 'このイベントを今日にコピー', 'このイベントを削除', '他のイベントを参照してこの日にコピー'],
     label: 'Edit List',
     border: { type: 'line', fg: 'yellow' },
     style: {
