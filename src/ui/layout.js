@@ -402,7 +402,7 @@ export function createLayout(calendars, events) {
     left: 'center',
     width: '50%',
     height: '30%',
-    items: ['この日に新しいイベントを追加', 'このイベントを編集', 'このイベントを今日にコピー', 'このイベントを削除', '他のイベントを参照してこの日にコピー'],
+    items: ['選択日にイベントを追加', 'イベントを編集', 'イベントを今日にコピー', 'イベントを削除', '他のイベントを参照してコピー'],
     label: 'Edit List',
     border: { type: 'line', fg: 'yellow' },
     style: {
