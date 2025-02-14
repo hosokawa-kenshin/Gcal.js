@@ -27,6 +27,8 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
   });
 
   const checkboxes = [];
+  const selectedCalendarIds = new Set(calendars.map(cal => cal.id));
+
   await fetchCalendars(auth).then((allCalendars) => {
     allCalendars.forEach((calendar, index) => {
       const checkbox = blessed.checkbox({
@@ -34,7 +36,7 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
         top: index + 1,
         left: 2,
         content: calendar.summary,
-        checked: false,
+        checked: selectedCalendarIds.has(calendar.id),
         mouse: true,
         keys: true,
         style: {
