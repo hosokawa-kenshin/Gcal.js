@@ -189,7 +189,7 @@ End Time (HH:mm) |  ${eTime}
         });
         break;
 
-      case 2:
+      case 1:
         editCommandList.hide();
         calendarList.show();
         calendarList.focus();
@@ -344,7 +344,7 @@ End Time (HH:mm) |  ${endTime}
         );
         break;
 
-      case 1:
+      case 2:
         editCommandList.hide();
         calendarList.show();
         calendarList.focus();
