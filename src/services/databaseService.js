@@ -6,45 +6,50 @@ import { calendar } from "googleapis/build/src/apis/calendar/index.js";
 export async function mergeDuplicateEvents() {
   const db = new sqlite3.Database("./db/Gcal.db");
 
-  const duplicates = await allQuery(db, `
-    SELECT id, COUNT(*) as count
-    FROM Events
-    GROUP BY id
-    HAVING count > 1
-  `);
-
-  for (const duplicate of duplicates) {
-    const { id } = duplicate;
-
-    const events = await allQuery(db, `
-      SELECT *
+  try {
+    const duplicates = await allQuery(db, `
+      SELECT id, COUNT(*) as count
       FROM Events
-      WHERE id = ?
-    `, [id]);
+      GROUP BY id
+      HAVING count > 1
+    `);
 
-    const mergedEvent = events.reduce((acc, event) => {
-      return {
-        id: event.id,
-        start: event.start,
-        end: event.end,
-        summary: event.summary,
-        calendarId: event.calendarId,
-        calendarName: event.calendarName,
-      };
-    }, {});
+    for (const duplicate of duplicates) {
+      const { id } = duplicate;
 
-    await runQuery(db, `
-      DELETE FROM Events
-      WHERE id = ?
-    `, [id]);
+      const events = await allQuery(db, `
+        SELECT *
+        FROM Events
+        WHERE id = ?
+      `, [id]);
 
-    await runQuery(db, `
-      INSERT INTO Events (id, start, end, summary, calendarId, calendarName)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [mergedEvent.id, new Date(mergedEvent.start).toISOString(), new Date(mergedEvent.end).toISOString(), mergedEvent.summary, mergedEvent.calendarId, mergedEvent.calendarName]);
+      const mergedEvent = events.reduce((latest, current) => {
+        const latestDate = latest.start ? new Date(latest.start) : new Date(0);
+        const currentDate = current.start ? new Date(current.start) : new Date(0);
+
+        return currentDate >= latestDate ? current : latest;
+      }, {});
+
+      await runQuery(db, `DELETE FROM Events WHERE id = ?`, [id]);
+
+      await runQuery(db, `
+        INSERT INTO Events (id, start, end, summary, calendarId, calendarName)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        mergedEvent.start,
+        mergedEvent.end,
+        mergedEvent.summary,
+        mergedEvent.calendarId,
+        mergedEvent.calendarName
+      ]);
+    }
+  } catch (err) {
+    console.error("Error merging duplicate events:", err);
+    throw err;
+  } finally {
+    db.close();
   }
-
-  db.close();
 }
 
 export async function ensureSyncTokenColumn() {
@@ -121,9 +126,12 @@ export async function deleteEventsFromDatabase(events) {
   const db = new sqlite3.Database("./db/Gcal.db");
   await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
   if (events.length > 0) {
-    events.forEach(async event => {
-      await runQuery(db, "DELETE FROM Events WHERE id = ?", [event.id]);
-    });
+    const deletePromises = events.map(event =>
+
+      runQuery(db, "DELETE FROM Events WHERE id = ?", [event.id]
+      )
+    );
+    await Promise.all(deletePromises);
   }
 }
 
@@ -147,22 +155,44 @@ export async function insertCalendarListToDatabase(calendars) {
 
 export async function insertEventsToDatabase(events) {
   const db = new sqlite3.Database("./db/Gcal.db");
-  await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
-  if (events.length > 0) {
-    events.forEach(async event => {
-      await runQuery(db, "INSERT INTO Events (id, start, end, summary, calendarId, calendarName) VALUES (?, ?, ?, ?, ?, ?)", [event.id, event.start.toISOString(), event.end.toISOString(), event.summary, event.calendarId, event.calendarName]);
+
+  try {
+    await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT PRIMARY KEY, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
+
+    if (events.length > 0) {
+      for (const event of events) {
+        const existing = await allQuery(db, "SELECT id FROM Events WHERE id = ?", [event.id]);
+
+        if (existing.length === 0) {
+          await runQuery(
+            db,
+            "INSERT INTO Events (id, start, end, summary, calendarId, calendarName) VALUES (?, ?, ?, ?, ?, ?)",
+            [event.id, event.start.toISOString(), event.end.toISOString(), event.summary, event.calendarId, event.calendarName]
+          );
+        } else {
+          await runQuery(
+            db,
+            "UPDATE Events SET start = ?, end = ?, summary = ?, calendarId = ?, calendarName = ? WHERE id = ?",
+            [event.start.toISOString(), event.end.toISOString(), event.summary, event.calendarId, event.calendarName, event.id]
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error inserting events:", err);
+    throw err;
+  } finally {
+    await new Promise((resolve, reject) => {
+      db.close((err) => {
+        if (err) {
+          console.error("Error closing database:", err.message);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
     });
   }
-  await new Promise((resolve, reject) => {
-    db.close((err) => {
-      if (err) {
-        console.error("Error closing database:", err.message);
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
 }
 
 export async function fetchEventsFromDatabase(calendars) {
