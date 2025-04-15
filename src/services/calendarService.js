@@ -6,66 +6,58 @@ import { authenticate } from '@google-cloud/local-auth';
 import { google } from 'googleapis';
 import { insertCalendarListToDatabase, fetchCalendarsFromDatabase, setSyncTokenInDatabase, ensureSyncTokenColumn, deleteEventsFromDatabase, insertEventsToDatabase, fetchEventsFromDatabase } from './databaseService.js';
 import { convertToDateTime } from '../utils/dateUtils.js';
+import readlineSync from 'readline-sync';
 
-// If modifying these scopes, delete token.json.
-const SCOPES = ['https://www.googleapis.com/auth/calendar'];
+import { randomBytes, createHash } from 'crypto';
 
-// The file token.json stores the user's access and refresh tokens, and is
-// created automatically when the authorization flow completes for the first time.
-const TOKEN_PATH = path.join(process.cwd(), 'token.json');
-const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
+function generatePKCE() {
+  const codeVerifier = randomBytes(32).toString('base64url');
+  const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
+  return { codeVerifier, codeChallenge };
+}
 
-/**
- * Reads previously authorized credentials from the save file.
- *
- * @return {Promise<OAuth2Client|null>}
- */
-export async function loadSavedCredentialsIfExist() {
+export async function getAuthorizationCode() {
+  const { codeVerifier, codeChallenge } = generatePKCE();
+  const authorizationUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  const params = {
+    response_type: 'code',
+    client_id: '205893349487-380afqp4sq85lknqalqcq5bmkqd5odk0.apps.googleusercontent.com',
+    redirect_uri: 'http://localhost',
+    scope: 'https://www.googleapis.com/auth/calendar',
+    state: 'state',
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+  };
+  authorizationUrl.search = new URLSearchParams(params).toString();
+
+  console.log('以下のURLにアクセスして認証してください:');
+  console.log(authorizationUrl.toString());
+
+  const code = readlineSync.question('認証コードを入力してください: ');
+
+  return { code, codeVerifier };
+}
+
+export async function getToken(code, codeVerifier) {
+  const tokenUrl = 'https://oauth2.googleapis.com/token';
+  const params = new URLSearchParams({
+    code,
+    client_id: '205893349487-380afqp4sq85lknqalqcq5bmkqd5odk0.apps.googleusercontent.com', // クライアントID
+    redirect_uri: 'http://localhost',
+    code_verifier: codeVerifier,
+    grant_type: 'authorization_code',
+  });
+
   try {
-    const content = await fs.readFile(TOKEN_PATH);
-    const credentials = JSON.parse(content);
-    return google.auth.fromJSON(credentials);
-  } catch (err) {
-    return null;
+    const response = await axios.post(tokenUrl, params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    console.log('トークン取得成功:', response);
+    // console.log('アクセストークン:', response.data.access_token);
+    return response.data.access_token;
+  } catch (error) {
+    console.error('トークン取得に失敗:', error.response);
   }
-}
-
-/**
- * Serializes credentials to a file compatible with GoogleAuth.fromJSON.
- *
- * @param {OAuth2Client} client
- * @return {Promise<void>}
- */
-export async function saveCredentials(client) {
-  const content = await fs.readFile(CREDENTIALS_PATH);
-  const keys = JSON.parse(content);
-  const key = keys.installed || keys.web;
-  const payload = JSON.stringify({
-    type: 'authorized_user',
-    client_id: key.client_id,
-    client_secret: key.client_secret,
-    refresh_token: client.credentials.refresh_token,
-  });
-  await fs.writeFile(TOKEN_PATH, payload);
-}
-
-/**
- * Load or request or authorization to call APIs.
- *
- */
-export async function authorize() {
-  let client = await loadSavedCredentialsIfExist();
-  if (client) {
-    return client;
-  }
-  client = await authenticate({
-    scopes: SCOPES,
-    keyfilePath: CREDENTIALS_PATH,
-  });
-  if (client.credentials) {
-    await saveCredentials(client);
-  }
-  return client;
 }
 
 /**

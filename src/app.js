@@ -1,13 +1,15 @@
 import '../src/utils/datePrototype.js';
 import { createLayout } from './ui/layout.js';
 import { handleInput } from './ui/inputHandler.js';
-import { authorize, initializeCalendars, initializeEvents } from './services/calendarService.js';
+import { initializeCalendars, initializeEvents, getAuthorizationCode, getToken } from './services/calendarService.js';
 import { editEvent } from './commands/edit.js';
 import { addEvent } from './commands/add.js';
 
 export async function runApp() {
   console.log('Running app ...');
-  const auth = await authorize();
+  // const auth = await authorize();
+  const { code, codeVerifier } = await getAuthorizationCode();
+  const accessToken = await getToken(code, codeVerifier);
   const calendars = await initializeCalendars(auth);
   var allEvents = await initializeEvents(auth, calendars);
   var events = [...allEvents.filter(event => event.start.getFullYear() === new Date().getFullYear() || event.start.getFullYear() === new Date().getFullYear() + 1 || event.start.getFullYear() === new Date().getFullYear() - 1)];

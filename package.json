@@ -10,11 +10,13 @@
     "blessed": "^0.1.81",
     "blessed-contrib": "^4.11.0",
     "clipboardy": "^4.0.0",
+    "crypto": "^1.0.1",
     "enquire": "^0.0.2",
     "enquirer": "^2.4.1",
     "googleapis": "^105.0.0",
     "japanese-holidays": "^1.0.10",
     "l": "^0.6.0",
+    "readline-sync": "^1.4.10",
     "sqlite3": "^5.1.7"
   }
 }
