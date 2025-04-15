@@ -1,5 +1,5 @@
 import blessed from 'blessed';
-import { configCalendarListInDatabase, fetchCalendarsFromDatabase } from '../services/databaseService.js';
+import { configCalendarListInDatabase, fetchCalendarsFromDatabase, insertCalendarListToDatabase } from '../services/databaseService.js';
 import { fetchCalendars } from '../services/calendarService.js';
 import { updateTable } from '../ui/layout.js';
 
@@ -30,6 +30,10 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
   const selectedCalendarIds = new Set(calendars.map(cal => cal.id));
 
   await fetchCalendars(auth).then((allCalendars) => {
+    const newCalendars = allCalendars.filter(
+      calendar => !calendars.some(existingCalendar => existingCalendar.id === calendar.id)
+    );
+    insertCalendarListToDatabase(newCalendars);
     allCalendars.forEach((calendar, index) => {
       const checkbox = blessed.checkbox({
         parent: form,
