@@ -26,6 +26,16 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
     vi: true
   });
 
+  blessed.text({
+    parent: form,
+    top: 0,
+    left: 'center',
+    content: 'Select Calendars to Display',
+    style: {
+      bold: true
+    }
+  });
+
   const checkboxes = [];
   const selectedCalendarIds = new Set(calendars.map(cal => cal.id));
 
@@ -37,23 +47,29 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
     allCalendars.forEach((calendar, index) => {
       const checkbox = blessed.checkbox({
         parent: form,
-        top: index + 1,
+        top: index + 2,
         left: 2,
+        height: 1,
         content: calendar.summary,
         checked: selectedCalendarIds.has(calendar.id),
         mouse: true,
         keys: true,
         style: {
           fg: 'white',
-          focus: { bg: 'blue' }
+          focus: {
+            bg: 'blue',
+            bold: true
+          }
         }
       });
       checkboxes.push({ checkbox, id: calendar.id });
     });
 
+    const saveButtonTop = allCalendars.length + 3;
+
     const submitButton = blessed.button({
       parent: form,
-      top: allCalendars.length + 2,
+      top: saveButtonTop,
       left: 2,
       content: 'Save',
       shrink: true,
@@ -65,6 +81,7 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
       },
       mouse: true
     });
+
     submitButton.on('press', async () => {
       form.hide();
       screen.render();
@@ -82,8 +99,16 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
       screen.render();
     });
 
+    form.key(['escape'], () => {
+      form.hide();
+      leftTable.focus();
+      screen.render();
+    });
+
     form.show();
-    form.focus();
+    if (checkboxes.length > 0) {
+      checkboxes[0].checkbox.focus();
+    }
     screen.render();
   });
 }
