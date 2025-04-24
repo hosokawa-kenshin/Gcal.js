@@ -4,6 +4,7 @@ import { handleInput } from './ui/inputHandler.js';
 import { authorize, initializeCalendars, initializeEvents } from './services/calendarService.js';
 import { editEvent } from './commands/edit.js';
 import { addEvent } from './commands/add.js';
+import { jumpCommand } from './commands/jump.js';
 
 export async function runApp() {
   console.log('Running app ...');
@@ -34,5 +35,10 @@ export async function runApp() {
 
   screen.key(['q', 'C-c'], () => process.exit(0));
   screen.key(['a'], () => addEvent(auth, screen, calendars, events, allEvents));
+  screen.key(['n'], () => { jumpCommand(screen, events, allEvents, ['nw']); });
+  screen.key(['p'], () => { jumpCommand(screen, events, allEvents, ['lw']); });
+  screen.key(['C-n'], () => { jumpCommand(screen, events, allEvents, ['nm']); });
+  screen.key(['C-p'], () => { jumpCommand(screen, events, allEvents, ['lm']); });
+  screen.key(['t'], () => { jumpCommand(screen, events, allEvents, []); });
   screen.render();
 }
