@@ -5,6 +5,7 @@ import { configCommand } from '../commands/config.js';
 import { syncCommand } from '../commands/sync.js';
 import { findCommand } from '../commands/find.js';
 import { jumpCommand } from '../commands/jump.js';
+import { updateCommand } from '../commands/update.js';
 
 export function handleInput(auth, inputBox, screen, calendars, events, allEvents, keypressListener) {
 
@@ -36,6 +37,9 @@ export function handleInput(auth, inputBox, screen, calendars, events, allEvents
       break;
     case 'help':
       helpEvent(screen);
+      break;
+    case 'update':
+      updateCommand(screen);
       break;
     case 'exit', 'e':
       process.exit(0);

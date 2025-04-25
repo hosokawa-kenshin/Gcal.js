@@ -5,16 +5,27 @@ import { authorize, initializeCalendars, initializeEvents } from './services/cal
 import { editEvent } from './commands/edit.js';
 import { addEvent } from './commands/add.js';
 import { jumpCommand } from './commands/jump.js';
+import { hasUpdates, isForkedRepository } from './commands/update.js';
 
 export async function runApp() {
   console.log('Running app ...');
+  const isForked = await isForkedRepository();
+  const updateAvailable = await hasUpdates(isForked);
   const auth = await authorize();
   const calendars = await initializeCalendars(auth);
   var allEvents = await initializeEvents(auth, calendars);
   var events = [...allEvents.filter(event => event.start.getFullYear() === new Date().getFullYear() || event.start.getFullYear() === new Date().getFullYear() + 1 || event.start.getFullYear() === new Date().getFullYear() - 1)];
   events.sort((a, b) => a.start - b.start);
+
   const { screen, inputBox, keypressListener } = createLayout(calendars, events);
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
+  const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
+
+  if (updateAvailable) {
+    logTable.log('{blue-fg}Update available! Please run update command to update the app.{/blue-fg}');
+  } else {
+    logTable.log('{blue-fg}You are using the latest version of the app.{/blue-fg}');
+  }
 
   inputBox.on('submit', (value) => {
     handleInput(auth, value, screen, calendars, events, allEvents, keypressListener);
