@@ -62,9 +62,19 @@ ln -s path/to/Gcal.js/cldr cldr
 | `find` or `f` | Display only events that include the argument in the event name |
 | `help`  | List all commands |
 | `jump` or `j` | Move to the event on the specified date (if no argument, move to today's event) |
-| `md`    | Update an event in Google Calendar |
+| `md`    | Desplay events in markdown and Copy to clipboard them |
 | `rm`    | Delete an event from Google Calendar |
 | `sync` or `s` | Sync with Google Calendar |
+| `update` | Update Gcal.js |
+
+## Shortcuts
+- `q` or `Ctrl + c`: Exit the program.
+- `a`: Add a new event.
+- `n`: Jump to one week later.
+- `p`: Jump to one week earlier.
+- `Ctrl + n`: Jump to the next month.
+- `Ctrl + p`: Jump to the previous month.
+- `t`: Jump to today.
 
 ## License
 
