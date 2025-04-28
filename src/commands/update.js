@@ -124,14 +124,12 @@ export async function updateRepository(screen, updateBox, originalRepoUrl = 'git
 
       updateBox.setContent(updateBox.getContent() + 'Repository updated successfully!\n');
       screen.render();
-      process.exit(0);
     } else {
       updateBox.setContent(updateBox.getContent() + 'Updating from origin...\n');
       screen.render();
-      const { stdout } = await execPromise('git pull');
+      const { stdout } = await execPromise('git pull origin main');
       updateBox.setContent(updateBox.getContent() + 'Repository updated successfully!\nThis session will be closed.\n');
       screen.render();
-      process.exit(0);
     }
 
   } catch (error) {
