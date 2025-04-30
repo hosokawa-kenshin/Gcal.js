@@ -42,13 +42,13 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
           const selectedEditCalendar = calendarNames[index];
           const selectedEditCalendarId = calendarIDs[index];
           calendarList.hide();
-          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
+          formBox.setLabel(`Edit Event - ${selectedEditCalendar}  (Ctrl+S to save)`);
           formBox.show();
           formBox.focus();
           screen.render();
 
           const originEvent = selectedEvent;
-          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
+          formBox.setLabel(`Edit Event - ${selectedEditCalendar}  (Ctrl+S to save)`);
           formBox.show();
           formBox.focus();
           screen.render();

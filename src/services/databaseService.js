@@ -139,7 +139,7 @@ export async function insertCalendarListToDatabase(calendars) {
   const db = new sqlite3.Database("./db/Gcal.db");
   await runQuery(db, "CREATE TABLE IF NOT EXISTS Calendars (id TEXT PRIMARY KEY, summary TEXT, subscription BOOLEAN DEFAULT 1, syncToken TEXT DEFAULT NULL)");
   for (const calendar of calendars) {
-    await runQuery(db, "INSERT OR REPLACE INTO Calendars (id, summary, subscription, syncToken) VALUES (?, ?, ?, ?)", [calendar.id, calendar.summary, true, calendar.syncToken]);
+    await runQuery(db, "INSERT OR IGNORE INTO Calendars (id, summary, subscription, syncToken) VALUES (?, ?, ?, ?)", [calendar.id, calendar.summary, true, calendar.syncToken]);
   }
   await new Promise((resolve, reject) => {
     db.close((err) => {

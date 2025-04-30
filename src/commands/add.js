@@ -35,7 +35,7 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
     calendarList.hide();
     const selectedCalendar = calendarNames[index];
     selectedCalendarId = calendarIDs[index];
-    formBox.setLabel(`Add Event - ${selectedCalendar}`);
+    formBox.setLabel(`Add Event - ${selectedCalendar}  (Ctrl+S to save)`);
     const today = new Date();
     today.setHours(today.getHours(), 0, 0, 0);
     const eventContent = `Event Title | 

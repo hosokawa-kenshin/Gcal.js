@@ -10,10 +10,11 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   const form = blessed.form({
     parent: screen,
+    label: 'Select Calendars to Display (Ctrl+S to save)',
     top: 'center',
     left: 'center',
     width: '70%',
-    height: '60%',
+    height: '50%',
     keys: true,
     border: { type: 'line' },
     scrollable: true,
@@ -26,18 +27,13 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
     vi: true
   });
 
-  blessed.text({
-    parent: form,
-    top: 0,
-    left: 'center',
-    content: 'Select Calendars to Display',
-    style: {
-      bold: true
-    }
-  });
-
   const checkboxes = [];
   const selectedCalendarIds = new Set(calendars.map(cal => cal.id));
+
+  const dummyCalendars = Array.from({ length: 100 }, (_, i) => ({
+    id: `calendar-${i}`,
+    summary: `Calendar ${i}`
+  }));
 
   await fetchCalendars(auth).then((allCalendars) => {
     const newCalendars = allCalendars.filter(
@@ -47,7 +43,7 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
     allCalendars.forEach((calendar, index) => {
       const checkbox = blessed.checkbox({
         parent: form,
-        top: index + 2,
+        top: index,
         left: 2,
         height: 1,
         content: calendar.summary,
@@ -62,41 +58,37 @@ export async function configCommand(auth, screen, calendars, events, allEvents) 
           }
         }
       });
+
+
+      checkbox.on('focus', () => {
+        const scrollOffset = form.childBase + form.height - 1;
+        if (index < form.childBase) {
+          form.scrollTo(index);
+        } else if (index >= scrollOffset) {
+          form.scrollTo(index - form.height + 2);
+        }
+        screen.render();
+      });
       checkboxes.push({ checkbox, id: calendar.id });
     });
 
-    const saveButtonTop = allCalendars.length + 3;
-
-    const submitButton = blessed.button({
-      parent: form,
-      top: saveButtonTop,
-      left: 2,
-      content: 'Save',
-      shrink: true,
-      padding: { left: 1, right: 1 },
-      style: {
-        fg: 'white',
-        bg: 'blue',
-        focus: { bg: 'green' }
-      },
-      mouse: true
-    });
-
-    submitButton.on('press', async () => {
-      form.hide();
-      screen.render();
-      const selectedCalendars = checkboxes
-        .filter(({ checkbox }) => checkbox.checked)
-        .map(({ id }) => id);
-      await configCalendarListInDatabase(selectedCalendars);
-      const fetchedcalendars = await fetchCalendarsFromDatabase();
-      await updateTable(auth, leftTable, fetchedcalendars, events, allEvents);
-      calendars.length = 0;
-      calendars.push(...fetchedcalendars);
-      calendarList.setItems(calendars.map(calendar => calendar.summary));
-      logTable.log('Config successfully registered!');
-      leftTable.focus();
-      screen.render();
+    checkboxes.forEach(({ checkbox }) => {
+      checkbox.key(['C-s'], async () => {
+        form.hide();
+        screen.render();
+        const selectedCalendars = checkboxes
+          .filter(({ checkbox }) => checkbox.checked)
+          .map(({ id }) => id);
+        await configCalendarListInDatabase(selectedCalendars);
+        const fetchedcalendars = await fetchCalendarsFromDatabase();
+        await updateTable(auth, leftTable, fetchedcalendars, events, allEvents);
+        calendars.length = 0;
+        calendars.push(...fetchedcalendars);
+        calendarList.setItems(calendars.map(calendar => calendar.summary));
+        logTable.log('Config successfully registered!');
+        leftTable.focus();
+        screen.render();
+      });
     });
 
     form.key(['escape'], () => {
