@@ -26,6 +26,15 @@ function restartApplication(screen) {
 export async function hasUpdates(isForked) {
   try {
     if (isForked) {
+      const { stdout: remotes } = await execPromise('git remote -v');
+      const hasUpstream = remotes.includes('upstream');
+
+      if (!hasUpstream) {
+        updateBox.setContent(updateBox.getContent() + 'Adding upstream remote...\n');
+        screen.render();
+        const upstreamUrl = `https://${originalRepoUrl}.git`;
+        await execPromise(`git remote add upstream ${upstreamUrl}`);
+      }
       await execPromise('git fetch upstream');
 
       const { stdout: branchOutput } = await execPromise('git branch --show-current');
@@ -87,19 +96,6 @@ export async function updateRepository(screen, updateBox, originalRepoUrl = 'git
     }
 
     const isForked = await isForkedRepository(originalRepoUrl);
-
-    if (isForked) {
-      const { stdout: remotes } = await execPromise('git remote -v');
-      const hasUpstream = remotes.includes('upstream');
-
-      if (!hasUpstream) {
-        updateBox.setContent(updateBox.getContent() + 'Adding upstream remote...\n');
-        screen.render();
-        const upstreamUrl = `https://${originalRepoUrl}.git`;
-        await execPromise(`git remote add upstream ${upstreamUrl}`);
-      }
-    }
-
     const updates = await hasUpdates(isForked);
 
     if (!updates) {
