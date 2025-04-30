@@ -23,15 +23,13 @@ function restartApplication(screen) {
  * @param {boolean} isForked - Whether the repository is forked or not
  * @returns {Promise<boolean>} Whether updates are available
  */
-export async function hasUpdates(isForked) {
+export async function hasUpdates(isForked, originalRepoUrl = 'github.com/hosokawa-kenshin/Gcal.js') {
   try {
     if (isForked) {
       const { stdout: remotes } = await execPromise('git remote -v');
       const hasUpstream = remotes.includes('upstream');
 
       if (!hasUpstream) {
-        updateBox.setContent(updateBox.getContent() + 'Adding upstream remote...\n');
-        screen.render();
         const upstreamUrl = `https://${originalRepoUrl}.git`;
         await execPromise(`git remote add upstream ${upstreamUrl}`);
       }
