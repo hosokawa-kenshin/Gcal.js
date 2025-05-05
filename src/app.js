@@ -1,5 +1,5 @@
 import '../src/utils/datePrototype.js';
-import { createLayout } from './ui/layout.js';
+import { createLayout, removeCommandPopup } from './ui/layout.js';
 import { handleInput } from './ui/inputHandler.js';
 import { authorize, initializeCalendars, initializeEvents } from './services/calendarService.js';
 import { editEvent } from './commands/edit.js';
@@ -28,13 +28,20 @@ export async function runApp() {
   }
 
   inputBox.on('submit', (value) => {
-    handleInput(auth, value, screen, calendars, events, allEvents, keypressListener);
+    const inputValue = value;
+
     inputBox.clearValue();
     inputBox.hide();
+
+    removeCommandPopup();
+
+    handleInput(auth, inputValue, screen, calendars, events, allEvents, keypressListener);
+
     screen.render();
   });
 
   inputBox.key(['escape'], () => {
+    removeCommandPopup();
     inputBox.hide();
     screen.render();
   });
@@ -42,7 +49,6 @@ export async function runApp() {
   leftTable.on('select', (item, index) => {
     editEvent(auth, screen, calendars, index, events, allEvents);
   });
-
 
   screen.key(['q', 'C-c'], () => process.exit(0));
   screen.key(['a'], () => addEvent(auth, screen, calendars, events, allEvents));
