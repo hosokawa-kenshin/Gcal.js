@@ -7,6 +7,7 @@ const settingPath = path.join(process.cwd(), 'setting.json');
 function ensureSettingExists() {
     try {
         if (!fs.existsSync(settingPath)) {
+            const defaultKeyBindings = getDefaultKeyBindings();
             fs.writeFileSync(
                 settingPath,
                 JSON.stringify({ keyBindings: defaultKeyBindings }, null, 2)
