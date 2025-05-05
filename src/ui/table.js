@@ -8,7 +8,7 @@ export function createLogTable(screen) {
     top: '80%',
     left: '50%',
     width: '50%',
-    height: '20%',
+    height: '22%',
     tags: true,
     border: { type: 'line', fg: 'cyan' },
     scrollable: true,

@@ -636,7 +636,7 @@ export function createLayout(calendars, events) {
   setupVimKeysForNavigation(eventTable, screen, null);
   leftTable.focus();
   leftTable.key(['space'], () => {
-    inputBox.show(); // この時点でinputBoxHiddenがfalseになる
+    inputBox.show();
     inputBox.focus();
     screen.render();
   });
