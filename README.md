@@ -36,6 +36,7 @@
 - Node.js
 - Google Calendar API must be enabled in the Google Cloud Console
 - `credentials.json` file must be obtained from the Google Cloud Console and placed in the program directory
+- Rename `setting.json.sample` to `setting.json` (you use this file to set your own key bindings)
 
 ## Setup
 ### Install dependencies
@@ -55,27 +56,48 @@ ln -s path/to/Gcal.js/cldr cldr
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `add`   | Add a new event to Google Calendar |
-| `config`| Select the Google Calendar to subscribe to |
-| `find` or `f` | Display only events that include the argument in the event name |
-| `help`  | List all commands |
+| Command       | Description                                                                     |
+| ------------- | ------------------------------------------------------------------------------- |
+| `add`         | Add a new event to Google Calendar                                              |
+| `config`      | Select the Google Calendar to subscribe to                                      |
+| `find` or `f` | Display only events that include the argument in the event name                 |
+| `help`        | List all commands                                                               |
 | `jump` or `j` | Move to the event on the specified date (if no argument, move to today's event) |
-| `md`    | Desplay events in markdown and Copy to clipboard them |
-| `rm`    | Delete an event from Google Calendar |
-| `sync` or `s` | Sync with Google Calendar |
-| `update` | Update Gcal.js |
+| `md`          | Desplay events in markdown and Copy to clipboard them                           |
+| `sync` or `s` | Sync with Google Calendar                                                       |
+| `update`      | Update Gcal.js                                                                  |
 
 ## Shortcuts
-- `q` or `Ctrl + c`: Exit the program.
-- `a`: Add a new event.
-- `n`: Jump to one week later.
-- `p`: Jump to one week earlier.
-- `Ctrl + n`: Jump to the next month.
-- `Ctrl + p`: Jump to the previous month.
-- `t`: Jump to today.
+Default key bindings:
+| Key               | Description                |
+| ----------------- | -------------------------- |
+| `q` or `Ctrl + c` | Exit the program           |
+| `a`               | Add a new event            |
+| `n`               | Jump to one week later     |
+| `p`               | Jump to one week earlier   |
+| `Ctrl + n`        | Jump to the next month     |
+| `Ctrl + p`        | Jump to the previous month |
+| `t`               | Jump to today              |
 
+Set your key bindings:  
+Edit setting.json, key bindings can be changed.
+```
+{
+    "keyBindings": {
+        "quit": [
+            "q",
+            "C-c"
+        ],
+
+        [...]
+
+        "today": [
+            "t",
+            "home"
+        ]
+    }
+}
+```
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
