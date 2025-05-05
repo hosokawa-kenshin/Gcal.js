@@ -6,9 +6,13 @@ import { editEvent } from './commands/edit.js';
 import { addEvent } from './commands/add.js';
 import { jumpCommand } from './commands/jump.js';
 import { hasUpdates, isForkedRepository } from './commands/update.js';
+import { loadSetting } from './services/settingService.js';
+import { setupKeyBindings } from './ui/keyConfig.js';
 
 export async function runApp() {
   console.log('Running app ...');
+  const setting = loadSetting();
+  const keyBindings = setting.keyBindings;
   const isForked = await isForkedRepository();
   const updateAvailable = await hasUpdates(isForked);
   const auth = await authorize();
@@ -50,12 +54,7 @@ export async function runApp() {
     editEvent(auth, screen, calendars, index, events, allEvents);
   });
 
-  screen.key(['q', 'C-c'], () => process.exit(0));
-  screen.key(['a'], () => addEvent(auth, screen, calendars, events, allEvents));
-  screen.key(['n'], () => { jumpCommand(screen, events, allEvents, ['nw']); });
-  screen.key(['p'], () => { jumpCommand(screen, events, allEvents, ['lw']); });
-  screen.key(['C-n'], () => { jumpCommand(screen, events, allEvents, ['nm']); });
-  screen.key(['C-p'], () => { jumpCommand(screen, events, allEvents, ['lm']); });
-  screen.key(['t'], () => { jumpCommand(screen, events, allEvents, []); });
+  setupKeyBindings(screen, auth, calendars, events, allEvents, inputBox, setting);
+
   screen.render();
 }
