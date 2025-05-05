@@ -36,7 +36,6 @@
 - Node.js
 - Google Calendar API must be enabled in the Google Cloud Console
 - `credentials.json` file must be obtained from the Google Cloud Console and placed in the program directory
-- Rename `setting.json.sample` to `setting.json` (you use this file to set your own key bindings)
 
 ## Setup
 ### Install dependencies
