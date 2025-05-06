@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { updateTable, groupEventsByDate } from '../ui/layout.js';
 import { splitDateTimeIntoDateAndTime, convertToDateTime } from '../utils/dateUtils.js';
 import { createAddForm } from '../ui/form.js';
+import { updateEventDetailTable } from '../ui/table.js';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -13,6 +14,7 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   const eventTable = screen.children.find(child => child.options.label === 'Current Events');
   const editCommandList = screen.children.find(child => child.options.label === 'Edit List');
+  const eventDetailTable = screen.children.find(child => child.options.label === 'Event Details');
   const { formBox, formFields } = createAddForm(screen);
   const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
   const selectedEvent = events[index];
@@ -27,10 +29,14 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
     new Set(calendars.map(calendar => calendar.id))
   );
 
+  updateEventDetailTable(eventDetailTable, selectedEvent);
+  eventDetailTable.show();
+
   editCommandList.show();
   screen.render();
   editCommandList.focus();
   editCommandList.once('select', (item, index) => {
+    eventDetailTable.hide();
     switch (index) {
 
       case 0:
@@ -59,6 +65,7 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
 Date (YYYY-MM-DD) | ${startDate}
 Start Time (HH:mm) | ${sTime}
 End Time (HH:mm) |  ${eTime}
+Description | 
 `;
 
           fs.writeFileSync(tempFilePath, eventContent, 'utf8');
@@ -92,6 +99,7 @@ End Time (HH:mm) |  ${eTime}
             formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
             formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
             formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
+            formFields.description.setValue(extractedDetails['Description']);
 
             screen.render();
             fs.unlinkSync(tempFilePath);
@@ -101,10 +109,12 @@ End Time (HH:mm) |  ${eTime}
             var date = formFields.date.getValue().trim();
             var startTime = formFields.startTime.getValue().trim();
             var endTime = formFields.endTime.getValue().trim();
+            var description = formFields.description.getValue().trim();
             const eventContent = `Event Title | ${title}
       Date (YYYY-MM-DD) | ${date}
       Start Time (HH:mm) | ${startTime}
       End Time (HH:mm) |  ${endTime}
+      Description | ${description}
       `;
             fs.writeFileSync(tempFilePath, eventContent, 'utf8');
             const editor = process.env.EDITOR || 'vim';
@@ -136,11 +146,13 @@ End Time (HH:mm) |  ${eTime}
               date = extractedDetails['Date (YYYY-MM-DD)'];
               startTime = extractedDetails['Start Time (HH:mm)'];
               endTime = extractedDetails['End Time (HH:mm)'];
+              description = extractedDetails['Description'];
 
               formFields.title.setValue(title);
               formFields.date.setValue(date);
               formFields.startTime.setValue(startTime);
               formFields.endTime.setValue(endTime);
+              formFields.description.setValue(description);
 
               screen.render();
               fs.unlinkSync(tempFilePath);
@@ -152,6 +164,7 @@ End Time (HH:mm) |  ${eTime}
             const date = formFields.date.getValue().trim();
             const startTime = formFields.startTime.getValue().trim();
             const endTime = formFields.endTime.getValue().trim();
+            const description = formFields.description.getValue().trim();
 
             formBox.hide();
 
@@ -165,6 +178,7 @@ End Time (HH:mm) |  ${eTime}
 
             const event = {
               summary: title,
+              description: description,
               start: {
                 dateTime: convertToDateTime(date, startTime).toISOString(),
               },
@@ -205,6 +219,7 @@ End Time (HH:mm) |  ${eTime}
 Date (YYYY-MM-DD) | ${startDate}
 Start Time (HH:mm) | ${startTime}
 End Time (HH:mm) |  ${endTime}
+Description | ${selectedEvent.description || ''}
 `;
           fs.writeFileSync(tempFilePath, eventContent, 'utf8');
           const editor = process.env.EDITOR || 'vim';
@@ -237,6 +252,7 @@ End Time (HH:mm) |  ${endTime}
             formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
             formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
             formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
+            formFields.description.setValue(extractedDetails['Description']);
 
             screen.render();
             fs.unlinkSync(tempFilePath);
@@ -246,10 +262,12 @@ End Time (HH:mm) |  ${endTime}
               var date = formFields.date.getValue().trim();
               var startTime = formFields.startTime.getValue().trim();
               var endTime = formFields.endTime.getValue().trim();
+              var description = formFields.description.getValue().trim();
               const eventContent = `Event Title | ${title}
 Date (YYYY-MM-DD) | ${date}
 Start Time (HH:mm) | ${startTime}
 End Time (HH:mm) |  ${endTime}
+Description | ${description}
 `;
               fs.writeFileSync(tempFilePath, eventContent, 'utf8');
               const editor = process.env.EDITOR || 'vim';
@@ -281,11 +299,13 @@ End Time (HH:mm) |  ${endTime}
                 date = extractedDetails['Date (YYYY-MM-DD)'];
                 startTime = extractedDetails['Start Time (HH:mm)'];
                 endTime = extractedDetails['End Time (HH:mm)'];
+                description = extractedDetails['Description'];
 
                 formFields.title.setValue(title);
                 formFields.date.setValue(date);
                 formFields.startTime.setValue(startTime);
                 formFields.endTime.setValue(endTime);
+                formFields.description.setValue(description);
 
                 screen.render();
                 fs.unlinkSync(tempFilePath);
@@ -298,6 +318,7 @@ End Time (HH:mm) |  ${endTime}
             const date = formFields.date.getValue().trim();
             const startTime = formFields.startTime.getValue().trim();
             const endTime = formFields.endTime.getValue().trim();
+            const description = formFields.description.getValue().trim();
 
             formBox.hide();
 
@@ -318,6 +339,7 @@ End Time (HH:mm) |  ${endTime}
 
             const event = {
               summary: title,
+              description: description,
               start: {
                 dateTime: convertToDateTime(date, startTime).toISOString(),
               },
@@ -361,6 +383,7 @@ End Time (HH:mm) |  ${endTime}
 Date (YYYY-MM-DD) | ${startDate}
 Start Time (HH:mm) | ${startTime}
 End Time (HH:mm) |  ${endTime}
+Description | ${selectedEvent.description || ''}
 `;
           fs.writeFileSync(tempFilePath, eventContent, 'utf8');
           const editor = process.env.EDITOR || 'vim';
@@ -393,6 +416,7 @@ End Time (HH:mm) |  ${endTime}
             formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
             formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
             formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
+            formFields.description.setValue(extractedDetails['Description']);
 
             screen.render();
             fs.unlinkSync(tempFilePath);
@@ -406,6 +430,7 @@ End Time (HH:mm) |  ${endTime}
 Date (YYYY-MM-DD) | ${date}
 Start Time (HH:mm) | ${startTime}
 End Time (HH:mm) |  ${endTime}
+Description | ${formFields.description.getValue().trim()}
 `;
             fs.writeFileSync(tempFilePath, eventContent, 'utf8');
             const editor = process.env.EDITOR || 'vim';
@@ -437,11 +462,13 @@ End Time (HH:mm) |  ${endTime}
               date = extractedDetails['Date (YYYY-MM-DD)'];
               startTime = extractedDetails['Start Time (HH:mm)'];
               endTime = extractedDetails['End Time (HH:mm)'];
+              description = extractedDetails['Description'];
 
               formFields.title.setValue(title);
               formFields.date.setValue(date);
               formFields.startTime.setValue(startTime);
               formFields.endTime.setValue(endTime);
+              formFields.description.setValue(description);
 
               screen.render();
               fs.unlinkSync(tempFilePath);
@@ -453,6 +480,7 @@ End Time (HH:mm) |  ${endTime}
             const date = formFields.date.getValue().trim();
             const startTime = formFields.startTime.getValue().trim();
             const endTime = formFields.endTime.getValue().trim();
+            const description = formFields.description.getValue().trim();
 
             formBox.hide();
 
@@ -466,6 +494,7 @@ End Time (HH:mm) |  ${endTime}
 
             const event = {
               summary: title,
+              description: description,
               start: {
                 dateTime: convertToDateTime(date, startTime).toISOString(),
               },
@@ -547,6 +576,7 @@ End Time (HH:mm) |  ${endTime}
 Date (YYYY-MM-DD) | ${startDate}
 Start Time (HH:mm) | ${sTime}
 End Time (HH:mm) |  ${eTime}
+Description | ${originEvent.description || ''}
 `;
 
           fs.writeFileSync(tempFilePath, eventContent, 'utf8');
@@ -580,6 +610,7 @@ End Time (HH:mm) |  ${eTime}
             formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
             formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
             formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
+            formFields.description.setValue(extractedDetails['Description']);
 
             screen.render();
             fs.unlinkSync(tempFilePath);
@@ -593,6 +624,7 @@ End Time (HH:mm) |  ${eTime}
 Date (YYYY-MM-DD) | ${date}
 Start Time (HH:mm) | ${startTime}
 End Time (HH:mm) |  ${endTime}
+Description | ${formFields.description.getValue().trim()}
 `;
             fs.writeFileSync(tempFilePath, eventContent, 'utf8');
             const editor = process.env.EDITOR || 'vim';
@@ -624,11 +656,13 @@ End Time (HH:mm) |  ${endTime}
               date = extractedDetails['Date (YYYY-MM-DD)'];
               startTime = extractedDetails['Start Time (HH:mm)'];
               endTime = extractedDetails['End Time (HH:mm)'];
+              description = extractedDetails['Description'];
 
               formFields.title.setValue(title);
               formFields.date.setValue(date);
               formFields.startTime.setValue(startTime);
               formFields.endTime.setValue(endTime);
+              formFields.description.setValue(description);
 
               screen.render();
               fs.unlinkSync(tempFilePath);
@@ -640,6 +674,7 @@ End Time (HH:mm) |  ${endTime}
             const date = formFields.date.getValue().trim();
             const startTime = formFields.startTime.getValue().trim();
             const endTime = formFields.endTime.getValue().trim();
+            const description = formFields.description.getValue().trim();
 
             formBox.hide();
 
@@ -653,6 +688,7 @@ End Time (HH:mm) |  ${endTime}
 
             const event = {
               summary: title,
+              description: description,
               start: {
                 dateTime: convertToDateTime(date, startTime).toISOString(),
               },
@@ -683,6 +719,7 @@ End Time (HH:mm) |  ${endTime}
 
   editCommandList.key(['escape'], () => {
     editCommandList.hide();
+    eventDetailTable.hide();
     leftTable.focus();
     screen.render();
   });

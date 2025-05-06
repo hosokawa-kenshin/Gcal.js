@@ -2,6 +2,7 @@ import contrib from 'blessed-contrib';
 import blessed from 'blessed';
 
 import { setupVimKeysForNavigation } from './keyConfig.js';
+import { splitDateTimeIntoDateAndTime } from '../utils/dateUtils.js';
 
 export function createLogTable(screen) {
   var logTable = blessed.log({
@@ -92,3 +93,51 @@ export function createEventTable(screen) {
   screen.append(eventTable);
   return eventTable;
 }
+
+export function createEventDetailTable(screen) {
+  const eventDetailTable = blessed.list({
+    hidden: true,
+    keys: true,
+    fg: 'white',
+    tags: true,
+    selectedFg: 'white',
+    interactive: true,
+    label: 'Event Details',
+    top: '10%',
+    left: 'center',
+    width: '50%',
+    height: '40%',
+    border: { type: 'line', fg: 'cyan' },
+    columnSpacing: 2,
+    style: {
+      header: { bold: true },
+    },
+  });
+  screen.append(eventDetailTable);
+  return eventDetailTable;
+}
+
+export function updateEventDetailTable(eventDetailTable, event) {
+  if (!event) {
+    eventDetailTable.setItems(['No event selected']);
+    return;
+  }
+
+  const { date: startDate, time: startTime } = splitDateTimeIntoDateAndTime(event.start);
+  const { date: endDate, time: endTime } = splitDateTimeIntoDateAndTime(event.end);
+
+  const details = [
+    `Title: ${event.summary || ''}`,
+    `Date: ${startDate}`,
+    `Start Time: ${startTime}`,
+    `End Time: ${endTime}`,
+    `Calendar: ${event.calendarName || ''}`,
+    '',
+    'Description:',
+    `${event.description || ''}`
+  ];
+
+  eventDetailTable.setItems(details);
+}
+
+

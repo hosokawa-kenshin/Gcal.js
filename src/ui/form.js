@@ -61,6 +61,16 @@ export function createAddForm(screen) {
       inputOnFocus: true,
       mouse: true,
     }),
+    description: blessed.textbox({
+      top: 18,
+      left: 2,
+      width: '90%-4',
+      height: 3,
+      label: 'Description',
+      border: { type: 'line', fg: 'white' },
+      inputOnFocus: true,
+      mouse: true,
+    }),
   };
 
   Object.values(formFields).forEach(field => formBox.append(field));
@@ -83,13 +93,14 @@ export function createAddForm(screen) {
 function getExistingFormFields(formBox) {
   return {
     title: formBox.children.find(child => child.options.label === 'Event Title'),
+    description: formBox.children.find(child => child.options.label === 'Description'),
     date: formBox.children.find(child => child.options.label === 'Date (YYYY-MM-DD)'),
     startTime: formBox.children.find(child => child.options.label === 'Start Time (HH:mm)'),
     endTime: formBox.children.find(child => child.options.label === 'End Time (HH:mm)')
   };
 }
 
-export function createCalendarCheckbox(screen){
+export function createCalendarCheckbox(screen) {
   const form = blessed.form({
     parent: screen,
     keys: true,
