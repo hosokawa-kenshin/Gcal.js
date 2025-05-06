@@ -4,7 +4,7 @@ import { insertEventsToDatabase, fetchEventsFromDatabase } from '../services/dat
 import { fetchCommandList } from '../services/commandService.js';
 import { setupVimKeysForNavigation } from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
-import { createEventTable, createLeftTable, createLogTable } from './table.js';
+import { createEventDetailTable, createEventTable, createLeftTable, createLogTable } from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
 import Event from '../models/event.js';
 import pkg from 'japanese-holidays';
@@ -555,10 +555,10 @@ export function createLayout(calendars, events) {
   });
 
   const editCalendarCommandList = blessed.list({
-    top: 'center',
+    top: '50%',
     left: 'center',
     width: '50%',
-    height: '30%',
+    height: '20%',
     items: ['選択日にイベントを追加', 'イベントを編集', 'イベントをコピー', 'イベントを削除', '他のイベントを参照して選択日にコピー'],
     label: 'Edit List',
     border: { type: 'line', fg: 'yellow' },
@@ -623,12 +623,14 @@ export function createLayout(calendars, events) {
   leftTable.select(searchIndexOfToday(events));
   leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
   updateGraph(screen, rightGraph, leftTable.selected, events);
+  const eventDetailTable = createEventDetailTable(screen);
 
   screen.append(inputBox);
   screen.append(list);
   screen.append(editCalendarCommandList);
   screen.append(commandList);
   screen.append(commandDetailsBox);
+  screen.append(eventDetailTable);
   setupVimKeysForNavigation(leftTable, screen, null);
   setupVimKeysForNavigation(list, screen, null);
   setupVimKeysForNavigation(commandList, screen, null);

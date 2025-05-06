@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { updateTable, groupEventsByDate } from '../ui/layout.js';
 import { splitDateTimeIntoDateAndTime, convertToDateTime } from '../utils/dateUtils.js';
 import { createAddForm } from '../ui/form.js';
+import { updateEventDetailTable } from '../ui/table.js';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -13,6 +14,7 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
   const eventTable = screen.children.find(child => child.options.label === 'Current Events');
   const editCommandList = screen.children.find(child => child.options.label === 'Edit List');
+  const eventDetailTable = screen.children.find(child => child.options.label === 'Event Details');
   const { formBox, formFields } = createAddForm(screen);
   const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
   const selectedEvent = events[index];
@@ -27,10 +29,14 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
     new Set(calendars.map(calendar => calendar.id))
   );
 
+  updateEventDetailTable(eventDetailTable, selectedEvent);
+  eventDetailTable.show();
+
   editCommandList.show();
   screen.render();
   editCommandList.focus();
   editCommandList.once('select', (item, index) => {
+    eventDetailTable.hide();
     switch (index) {
 
       case 0:
@@ -713,6 +719,7 @@ Description | ${formFields.description.getValue().trim()}
 
   editCommandList.key(['escape'], () => {
     editCommandList.hide();
+    eventDetailTable.hide();
     leftTable.focus();
     screen.render();
   });
