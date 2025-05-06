@@ -33,13 +33,14 @@ export async function mergeDuplicateEvents() {
       await runQuery(db, `DELETE FROM Events WHERE id = ?`, [id]);
 
       await runQuery(db, `
-        INSERT INTO Events (id, start, end, summary, calendarId, calendarName)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO Events (id, start, end, summary, description, calendarId, calendarName)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `, [
         id,
         mergedEvent.start,
         mergedEvent.end,
         mergedEvent.summary,
+        mergedEvent.description,
         mergedEvent.calendarId,
         mergedEvent.calendarName
       ]);
@@ -124,7 +125,7 @@ export async function configCalendarListInDatabase(calendarIDs) {
 }
 export async function deleteEventsFromDatabase(events) {
   const db = new sqlite3.Database("./db/Gcal.db");
-  await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT PRIMARY KEY, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
+  await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT PRIMARY KEY, start TEXT, end TEXT, summary TEXT, description TEXT, calendarId TEXT, calendarName TEXT)");
   if (events.length > 0) {
     const deletePromises = events.map(event =>
 
@@ -137,7 +138,7 @@ export async function deleteEventsFromDatabase(events) {
 
 export async function insertCalendarListToDatabase(calendars) {
   const db = new sqlite3.Database("./db/Gcal.db");
-  await runQuery(db, "CREATE TABLE IF NOT EXISTS Calendars (id TEXT PRIMARY KEY, summary TEXT, subscription BOOLEAN DEFAULT 1, syncToken TEXT DEFAULT NULL)");
+  await runQuery(db, "CREATE TABLE IF NOT EXISTS Calendars (id TEXT PRIMARY KEY, summary TEXT, description TEXT, subscription BOOLEAN DEFAULT 1, syncToken TEXT DEFAULT NULL)");
   for (const calendar of calendars) {
     await runQuery(db, "INSERT OR IGNORE INTO Calendars (id, summary, subscription, syncToken) VALUES (?, ?, ?, ?)", [calendar.id, calendar.summary, true, calendar.syncToken]);
   }
@@ -157,7 +158,7 @@ export async function insertEventsToDatabase(events) {
   const db = new sqlite3.Database("./db/Gcal.db");
 
   try {
-    await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT PRIMARY KEY, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
+    await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT PRIMARY KEY, start TEXT, end TEXT, summary TEXT, description TEXT, calendarId TEXT, calendarName TEXT)");
 
     if (events.length > 0) {
       for (const event of events) {
@@ -166,14 +167,14 @@ export async function insertEventsToDatabase(events) {
         if (existing.length === 0) {
           await runQuery(
             db,
-            "INSERT INTO Events (id, start, end, summary, calendarId, calendarName) VALUES (?, ?, ?, ?, ?, ?)",
-            [event.id, event.start.toISOString(), event.end.toISOString(), event.summary, event.calendarId, event.calendarName]
+            "INSERT INTO Events (id, start, end, summary, description, calendarId, calendarName) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [event.id, event.start.toISOString(), event.end.toISOString(), event.summary, event.description, event.calendarId, event.calendarName]
           );
         } else {
           await runQuery(
             db,
-            "UPDATE Events SET start = ?, end = ?, summary = ?, calendarId = ?, calendarName = ? WHERE id = ?",
-            [event.start.toISOString(), event.end.toISOString(), event.summary, event.calendarId, event.calendarName, event.id]
+            "UPDATE Events SET start = ?, end = ?, summary = ?, description = ?, calendarId = ?, calendarName = ? WHERE id = ?",
+            [event.start.toISOString(), event.end.toISOString(), event.summary, event.description, event.calendarId, event.calendarName, event.id]
           );
         }
       }
@@ -198,7 +199,7 @@ export async function insertEventsToDatabase(events) {
 export async function fetchEventsFromDatabase(calendars) {
   const db = new sqlite3.Database("./db/Gcal.db");
   const events = [];
-  await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT PRIMARY KEY, start TEXT, end TEXT, summary TEXT, calendarId TEXT, calendarName TEXT)");
+  await runQuery(db, "CREATE TABLE IF NOT EXISTS Events (id TEXT PRIMARY KEY, start TEXT, end TEXT, summary TEXT, description TEXT, calendarId TEXT, calendarName TEXT)");
   await new Promise((resolve, reject) => {
     for (const calendar of calendars) {
       db.each(
@@ -210,7 +211,7 @@ export async function fetchEventsFromDatabase(calendars) {
           } else {
             const start = new Date(row.start);
             const end = new Date(row.end);
-            events.push(new Event(row.id, start, end, row.summary, row.calendarId, row.calendarName));
+            events.push(new Event(row.id, start, end, row.summary, row.description, row.calendarId, row.calendarName));
           }
         },
         (err, rowCount) => {

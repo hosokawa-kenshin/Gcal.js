@@ -20,6 +20,7 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
   var date = null;
   var startTime = null;
   var endTime = null;
+  var description = null;
 
   const calendarNames = Array.from(
     new Set(calendars.map(calendar => calendar.summary))
@@ -42,6 +43,7 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
 Date (YYYY-MM-DD) | ${today.toLocalISOString().slice(0, 10)}
 Start Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
 End Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
+Description | 
 `;
 
     fs.writeFileSync(tempFilePath, eventContent, 'utf8');
@@ -79,11 +81,13 @@ End Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
       date = extractedDetails['Date (YYYY-MM-DD)'];
       startTime = extractedDetails['Start Time (HH:mm)'];
       endTime = extractedDetails['End Time (HH:mm)'];
+      description = extractedDetails['Description'];
 
       formFields.title.setValue(title);
       formFields.date.setValue(date);
       formFields.startTime.setValue(startTime);
       formFields.endTime.setValue(endTime);
+      formFields.description.setValue(description);
 
       screen.render();
       fs.unlinkSync(tempFilePath);
@@ -98,10 +102,12 @@ End Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
     var date = formFields.date.getValue().trim();
     var startTime = formFields.startTime.getValue().trim();
     var endTime = formFields.endTime.getValue().trim();
+    var description = formFields.description.getValue().trim();
     const eventContent = `Event Title | ${title}
 Date (YYYY-MM-DD) | ${date}
 Start Time (HH:mm) | ${startTime}
 End Time (HH:mm) |  ${endTime}
+Description | ${description}
     `;
     fs.writeFileSync(tempFilePath, eventContent, 'utf8');
     const editor = process.env.EDITOR || 'vim';
@@ -133,11 +139,13 @@ End Time (HH:mm) |  ${endTime}
       date = extractedDetails['Date (YYYY-MM-DD)'];
       startTime = extractedDetails['Start Time (HH:mm)'];
       endTime = extractedDetails['End Time (HH:mm)'];
+      description = extractedDetails['Description'];
 
       formFields.title.setValue(title);
       formFields.date.setValue(date);
       formFields.startTime.setValue(startTime);
       formFields.endTime.setValue(endTime);
+      formFields.description.setValue(description);
 
       screen.render();
 
@@ -159,6 +167,7 @@ End Time (HH:mm) |  ${endTime}
 
     const event = {
       summary: title,
+      description: description,
       start: {
         dateTime: convertToDateTime(date, startTime).toISOString(),
       },
