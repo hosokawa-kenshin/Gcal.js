@@ -31,14 +31,14 @@ export function setupVimKeysForNavigation(widget, screen, focusbackwith) {
 export function setupKeyBindings(screen, auth, calendars, events, allEvents, inputBox, setting) {
     const keyBindings = setting?.keyBindings || getDefaultKeyBindings();
 
-    // Quit application 
+    // Quit application
     screen.key(keyBindings.quit || ['q', 'C-c'], () => process.exit(0));
 
-    // Add Event 
+    // Add Event
     screen.key(keyBindings.addEvent || ['a'], () =>
         addEvent(auth, screen, calendars, events, allEvents));
 
-    // Navigation 
+    // Navigation
     screen.key(keyBindings.nextWeek || ['n'], () =>
         jumpCommand(screen, events, allEvents, ['nw']));
 
@@ -54,7 +54,7 @@ export function setupKeyBindings(screen, auth, calendars, events, allEvents, inp
     screen.key(keyBindings.today || ['t'], () =>
         jumpCommand(screen, events, allEvents, []));
 
-    // Show command line 
+    // Show command line
     screen.key(keyBindings.toggleCommandLine || ['space'], () => {
         inputBox.show();
         inputBox.focus();

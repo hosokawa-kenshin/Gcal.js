@@ -4,7 +4,7 @@ import fs2 from 'fs';
 import path from 'path';
 import { authenticate } from '@google-cloud/local-auth';
 import { google } from 'googleapis';
-import { insertCalendarListToDatabase, fetchCalendarsFromDatabase, setSyncTokenInDatabase, ensureSyncTokenColumn, deleteEventsFromDatabase, insertEventsToDatabase, fetchEventsFromDatabase } from './databaseService.js';
+import { insertCalendarListToDatabase, fetchCalendarsFromDatabase, setSyncTokenInDatabase, ensureSyncTokenColumn, ensureDescriptionColumn, deleteEventsFromDatabase, insertEventsToDatabase, fetchEventsFromDatabase } from './databaseService.js';
 import { convertToDateTime } from '../utils/dateUtils.js';
 
 // If modifying these scopes, delete token.json.
@@ -156,7 +156,7 @@ export async function initializeCalendars(auth) {
     await insertCalendarListToDatabase(calendars);
     calendars = await fetchCalendarsFromDatabase();
   } else {
-    ensureSyncTokenColumn();
+    ensureDescriptionColumn();
     calendars = await fetchCalendarsFromDatabase();
   }
   return calendars;

@@ -53,6 +53,15 @@ export async function mergeDuplicateEvents() {
   }
 }
 
+export async function ensureDescriptionColumn() {
+  const db = new sqlite3.Database("./db/Gcal.db");
+  const result = await allQuery(db, "PRAGMA table_info(Events)");
+  const columns = result.map(row => row.name);
+  if (!columns.includes('description')) {
+    await runQuery(db, "ALTER TABLE Events ADD COLUMN description TEXT");
+  }
+}
+
 export async function ensureSyncTokenColumn() {
   const db = new sqlite3.Database("./db/Gcal.db");
   const result = await allQuery(db, "PRAGMA table_info(Calendars)");
