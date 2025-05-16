@@ -71,6 +71,14 @@ export function createAddForm(screen) {
       inputOnFocus: true,
       mouse: true,
     }),
+
+    all_day: blessed.checkbox({
+      top: 22,
+      left: 2,
+      content: 'All Day',
+      checked: false,
+      mouse: true,
+    }),
   };
 
   Object.values(formFields).forEach(field => formBox.append(field));

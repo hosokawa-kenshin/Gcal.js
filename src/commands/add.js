@@ -20,7 +20,9 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
   var date = null;
   var startTime = null;
   var endTime = null;
-  var description = null;
+  var description = null
+  var allDay = null;
+  var event = null;
 
   const calendarNames = Array.from(
     new Set(calendars.map(calendar => calendar.summary))
@@ -43,6 +45,7 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
 Date (YYYY-MM-DD) | ${today.toLocalISOString().slice(0, 10)}
 Start Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
 End Time (HH:mm) | ${today.toLocalISOString().slice(11, 16)}
+All Day (y/n)| n
 Description | 
 `;
 
@@ -82,12 +85,14 @@ Description |
       startTime = extractedDetails['Start Time (HH:mm)'];
       endTime = extractedDetails['End Time (HH:mm)'];
       description = extractedDetails['Description'];
+      allDay = extractedDetails['All Day (y/n)'] === 'y' ? true : false;
 
       formFields.title.setValue(title);
       formFields.date.setValue(date);
       formFields.startTime.setValue(startTime);
       formFields.endTime.setValue(endTime);
       formFields.description.setValue(description);
+      allDay ? formFields.all_day.check() : formFields.all_day.uncheck();
 
       screen.render();
       fs.unlinkSync(tempFilePath);
@@ -103,10 +108,12 @@ Description |
     var startTime = formFields.startTime.getValue().trim();
     var endTime = formFields.endTime.getValue().trim();
     var description = formFields.description.getValue().trim();
+    var allDay = formFields.all_day.checked;
     const eventContent = `Event Title | ${title}
 Date (YYYY-MM-DD) | ${date}
 Start Time (HH:mm) | ${startTime}
 End Time (HH:mm) |  ${endTime}
+All Day (y/n)| ${allDay ? 'y' : 'n'}
 Description | ${description}
     `;
     fs.writeFileSync(tempFilePath, eventContent, 'utf8');
@@ -140,12 +147,14 @@ Description | ${description}
       startTime = extractedDetails['Start Time (HH:mm)'];
       endTime = extractedDetails['End Time (HH:mm)'];
       description = extractedDetails['Description'];
+      allDay = extractedDetails['All Day (y/n)'] === 'y' ? true : false;
 
       formFields.title.setValue(title);
       formFields.date.setValue(date);
       formFields.startTime.setValue(startTime);
       formFields.endTime.setValue(endTime);
       formFields.description.setValue(description);
+      allDay ? formFields.all_day.check() : formFields.all_day.uncheck();
 
       screen.render();
 
@@ -157,7 +166,7 @@ Description | ${description}
 
     formBox.hide();
 
-    Object.values(formFields).forEach(field => field.clearValue());
+    // Object.values(formFields).forEach(field => field.clearValue());
 
     if (!title || !date || !startTime || !endTime) {
       logTable.log('Error: All fields must be filled in.');
@@ -165,17 +174,29 @@ Description | ${description}
       return;
     }
 
-    const event = {
-      summary: title,
-      description: description,
-      start: {
-        dateTime: convertToDateTime(date, startTime).toISOString(),
-      },
-      end: {
-        dateTime: convertToDateTime(date, endTime).toISOString(),
-      },
-    };
-
+    if (allDay) {
+      event ={
+        summary: title,
+        description: description,
+        start: {
+          date: date,
+        },
+        end: {
+          date: date,
+        }
+      }
+    } else {
+      event = {
+        summary: title,
+        description: description,
+        start: {
+          dateTime: convertToDateTime(date, startTime).toISOString(),
+        },
+        end: {
+          dateTime: convertToDateTime(date, endTime).toISOString(),
+        },
+      };
+    }
     calendar.events.insert({
       calendarId: selectedCalendarId,
       resource: event,
