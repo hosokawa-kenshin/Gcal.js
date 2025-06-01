@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-<b>TUI</b> <b>Google Calendar<b>管理アプリケーション 🧑‍💻👩‍💻👨‍💻
+<b>TUI</b> <b>Google Calendar<b> クライアントアプリケーション 🧑‍💻👩‍💻👨‍💻
 </p>
 
 <p align="center">
@@ -53,27 +53,90 @@ npm install
 
 ### コマンドのパスを設定
 
-パスを通した任意のディレクトリ内にcldrファイルへのシンボリックリンクを作成する
+パスを通した任意のディレクトリ内に Gcal.js の実行ファイル (cldr) へのシンボリックリンクを作成する
 
 ``` bash
 export PATH=path/to/your/directory:$PATH
 cd your/directory
 ln -s path/to/Gcal.js/cldr cldr
 ```
+以下に設定例を示す
 
-## Commands
-| コマンド名 | 説明 |
-|--------|----------------------------------|
-| `add`    | Googleカレンダーに新しいイベントを追加 |
-| `config` | 購読するGoogleカレンダーを選択       |
-| `find` or `f`   | 引数をイベント名に含むイベントのみ表示  |
-| `help`   | コマンドを一覧表示                  |
-| `jump` or `j` | 引数の日付のイベントに移動（引数がなければ今日のイベントに移動） |
-| `md`     | Googleカレンダーのイベントを更新      |
-| `rm`     | Googleカレンダーのイベントを削除      |
-| `sync` or `s`   | Googleカレンダーと同期    |
+```bash
+export PATH=$HOME/.local/bin:$PATH #(.bashrc or .zshrc に追加することで，設定を永続化)
+cd ~/.local/bin
+ln -s ~/git/Gcal.js/cldr cldr
+```
 
-## ライセンス
+## Usage
+### 表示について
+Gcal.js を起動すると，3つのテーブルが表示される．  
+左には Google Calendar に登録されている予定，右上には予定が入っている日時を示すグラフ，右下にはログが表示される．  
+カーソルが当たっている予定は，青色にハイライトされる．
+
+### 基本操作
+カーソルの移動には，矢印キーか `jk` キー (like vim) を用いる．  
+システムの終了は `q` キーを押す
+イベントの選択は，選択したいイベントにカーソルを当て `Enter` キーを押す．
+コマンドラインを開くには `Space` キーを押す．
+
+### 予定の追加・編集・削除機能および使用できるコマンド
+それぞれの操作方法や，仕様，詳細については以下を参照．
+- [予定の追加](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/add.md)
+
+- [予定の編集](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/edit.md)
+
+- [予定の削除](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/delete.md)
+
+- [予定のコピー](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/copy.md)
+
+- [予定参照コピー](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/refcopy.md)
+
+- [表示するカレンダの選択](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/config.md)
+
+- [イベント検索表示](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/find.md)
+
+- [カーソル移動](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/jump.md)
+
+- [Markdown出力](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/md.md)
+
+- [GoogleCalendarと同期](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/sync.md)
+
+
+## Shortcuts
+一部の機能やコマンドには，ショートカットが存在する．  
+また，自身の好みのキーを割り当てることも可能である．  
+以下にデフォルトのキーバインドを示す．
+
+| キー              | 説明                 |
+| ----------------- | -------------------- |
+| `q` or `Ctrl + c` | Gcal.js の終了       |
+| `a`               | 予定の追加           |
+| `n`               | カーソルを来週へ移動 |
+| `p`               | カーソルを先週へ移動 |
+| `Ctrl + n`        | カーソルを来月へ移動 |
+| `Ctrl + p`        | カーソルを先月へ移動 |
+| `t`               | カーソルを本日へ移動 |
+
+独自キーバインドの設定は `setting.json` を書き換える．
+```
+{
+    "keyBindings": {
+        "quit": [
+            "q",
+            "C-c"
+        ],
+
+        [...]
+
+        "today": [
+            "t",
+            "home"
+        ]
+    }
+}
+```
+## License
 
 このプロジェクトはMITライセンスの下でライセンスされている．
 詳細は[LICENSE](LICENSE)ファイルを参照．
