@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-<b>TUI</b> <b>Google Calendar<b>Management Application 🧑‍💻👩‍💻👨‍💻
+<b>TUI</b> <b>Google Calendar<b> Client Application 🧑‍💻👩‍💻👨‍💻
 </p>
 
 <p align="center">
@@ -32,6 +32,9 @@
 <img src="./img/TUI.png" alt="TUI" width="600">
 </p>
 
+## For Japanese
+[日本語版README](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/README-ja.md)
+
 ## Requirements
 - Node.js
 - Google Calendar API must be enabled in the Google Cloud Console
@@ -47,11 +50,19 @@ npm install
 
 ### Create a symlink
 
+To command Gcal (cldr), create a symlink in a location where the path is accessible.
 ```bash
 export PATH=path/to/your/directory:$PATH
 cd your/directory
 ln -s path/to/Gcal.js/cldr cldr
 ```
+The following is a configuration example
+```bash
+export PATH=$HOME/.local/bin:$PATH #(Permanent by adding it to .bashrc or .zshrc)
+cd ~/.local/bin
+ln -s ~/git/Gcal.js/cldr cldr
+```
+
 
 ## Commands
 
