@@ -61,3 +61,18 @@
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return daysOfWeek[date.getDay()];
   }
+
+/**
+ * Check if two Date objects represent the same date (ignoring time).
+ *
+ * @param {Date} date1 - The first date.
+ * @param {Date} date2 - The second date.
+ * @returns {boolean} - True if the dates are the same, false otherwise.
+ */
+export function isSameDate(date1, date2) {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}

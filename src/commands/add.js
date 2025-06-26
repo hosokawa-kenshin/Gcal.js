@@ -64,6 +64,7 @@ Description |
         return;
       }
       const updatedText = fs.readFileSync(tempFilePath, 'utf8');
+      // TODO: ここで description なら一行だけでなく，全行引っ張ってくるようにする
       const extractDetails = (text) => {
         const lines = text.split('\n');
         const details = {};
@@ -175,7 +176,7 @@ Description | ${description}
     }
 
     if (allDay) {
-      event ={
+      event = {
         summary: title,
         description: description,
         start: {
