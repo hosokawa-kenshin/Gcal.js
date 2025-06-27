@@ -48,6 +48,12 @@ Run the following command in the project directory to install the necessary depe
 npm install
 ```
 
+### Set up Google Calendar API credentials
+
+1. Create a project in Google Cloud Console and enable the Google Calendar API
+2. Create credentials and generate an OAuth 2.0 client ID
+3. Download the credentials.json file and save it to the same directory as this program
+
 ### Create a symlink
 
 To command Gcal (cldr), create a symlink in a location where the path is accessible.
@@ -63,6 +69,39 @@ cd ~/.local/bin
 ln -s ~/git/Gcal.js/cldr cldr
 ```
 
+## Usage
+### Display
+When you start Gcal.js, three tables are displayed.  
+On the left are the events registered in Google Calendar, on the upper right is a graph showing the dates and times of events, and on the lower right is a log.  
+The event under the cursor is highlighted in blue.
+
+### Basic operations
+Use the arrow keys or `jk` keys (like vim) to move the cursor.  
+Press the `q` key to exit the system.
+To select an event, place the cursor on the event you want to select and press the `Enter` key.
+Press the `Space` key to open the command line.
+
+### Event add/edit/delete functions and available commands
+Please refer to the following for operation methods, specifications, and details of each:
+- [Add events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/add.md) (Added information about how to add events using LLM on 2025/6/27)
+
+- [Edit events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/edit.md)
+
+- [Delete events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/delete.md)
+
+- [Copy events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/copy.md)
+
+- [Reference copy events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/refcopy.md)
+
+- [Select calendars to display](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/config.md)
+
+- [Event search display](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/find.md)
+
+- [Cursor movement](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/jump.md)
+
+- [Markdown output](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/md.md)
+
+- [Sync with Google Calendar](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/sync.md)
 
 ## Commands
 
@@ -78,12 +117,16 @@ ln -s ~/git/Gcal.js/cldr cldr
 | `update`      | Update Gcal.js                                                                  |
 
 ## Shortcuts
-Default key bindings:
+Some functions and commands have shortcuts.  
+You can also assign your own preferred keys.  
+The default key bindings are shown below.
+
 | Key               | Description                |
 | ----------------- | -------------------------- |
 | `q` or `Ctrl + c` | Exit the program           |
 | `a`               | Add a new event            |
 | `n`               | Jump to one week later     |
+| `l`               | Add event with LLM         |
 | `p`               | Jump to one week earlier   |
 | `Ctrl + n`        | Jump to the next month     |
 | `Ctrl + p`        | Jump to the previous month |
