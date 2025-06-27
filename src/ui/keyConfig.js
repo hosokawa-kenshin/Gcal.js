@@ -1,5 +1,6 @@
 import { jumpCommand } from '../commands/jump.js';
 import { addEvent } from '../commands/add.js';
+import { addEventNL } from '../commands/addNL.js';
 import { editEvent } from '../commands/edit.js';
 
 export function setupVimKeysForNavigation(widget, screen, focusbackwith) {
@@ -31,14 +32,14 @@ export function setupVimKeysForNavigation(widget, screen, focusbackwith) {
 export function setupKeyBindings(screen, auth, calendars, events, allEvents, inputBox, setting) {
     const keyBindings = setting?.keyBindings || getDefaultKeyBindings();
 
-    // Quit application
     screen.key(keyBindings.quit || ['q', 'C-c'], () => process.exit(0));
 
-    // Add Event
     screen.key(keyBindings.addEvent || ['a'], () =>
         addEvent(auth, screen, calendars, events, allEvents));
 
-    // Navigation
+    screen.key(keyBindings.addEventNL || ['l'], () =>
+        addEventNL(auth, screen, calendars, events, allEvents));
+
     screen.key(keyBindings.nextWeek || ['n'], () =>
         jumpCommand(screen, events, allEvents, ['nw']));
 
@@ -54,7 +55,6 @@ export function setupKeyBindings(screen, auth, calendars, events, allEvents, inp
     screen.key(keyBindings.today || ['t'], () =>
         jumpCommand(screen, events, allEvents, []));
 
-    // Show command line
     screen.key(keyBindings.toggleCommandLine || ['space'], () => {
         inputBox.show();
         inputBox.focus();
@@ -66,6 +66,7 @@ export function getDefaultKeyBindings() {
     return {
         quit: ['q', 'C-c'],
         addEvent: ['a'],
+        addEventNL: ['l'],
         nextWeek: ['n'],
         prevWeek: ['p'],
         nextMonth: ['C-n'],

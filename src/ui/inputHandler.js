@@ -1,4 +1,5 @@
 import { addEvent } from '../commands/add.js';
+import { addEventNL } from '../commands/addNL.js';
 import { markdownCommand } from '../commands/markdown.js';
 import { helpEvent } from '../commands/help.js';
 import { configCommand } from '../commands/config.js';
@@ -14,6 +15,9 @@ export function handleInput(auth, inputBox, screen, calendars, events, allEvents
   switch (command) {
     case 'add':
       addEvent(auth, screen, calendars, events, allEvents);
+      break;
+    case 'llm':
+      addEventNL(auth, screen, calendars, events, allEvents);
       break;
     case 'md':
     case 'markdown':

@@ -7,9 +7,11 @@
   },
   "dependencies": {
     "@google-cloud/local-auth": "^2.1.0",
+    "@google/generative-ai": "^0.24.1",
     "blessed": "^0.1.81",
     "blessed-contrib": "^4.11.0",
     "clipboardy": "^4.0.0",
+    "dotenv": "^16.6.0",
     "enquire": "^0.0.2",
     "enquirer": "^2.4.1",
     "googleapis": "^105.0.0",
