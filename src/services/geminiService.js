@@ -72,7 +72,7 @@ export class GeminiNLPService {
   "date": "YYYY-MM-DD形式の日付",
   "startTime": "HH:mm形式の開始時刻",
   "endTime": "HH:mm形式の終了時刻",
-  "allDay": true/false,
+  "allDay": true/false (デフォルトはfalse),
   "description": "詳細説明（なければ空文字）",
   "confidence": 0.0-1.0の信頼度,
   "interpretation": "解析の解釈説明"
@@ -85,7 +85,7 @@ export class GeminiNLPService {
 4. 曜日指定は最も近い該当日を選択
 5. 「午前」「午後」「朝」「夜」等は適切な時刻に変換
 6. 日本の祝日・文化的文脈を考慮
-7. 一日中や終日の場合はallDayをtrueに
+7. 一日中や終日の場合はallDayをtrueに (デフォルトはfalse)
 8. 時刻は24時間形式で出力
 `;
     }

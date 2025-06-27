@@ -7,5 +7,6 @@ db/*
 !db/.gitkeep
 setting.json
 .env
-docs/
+
 .github
+references/

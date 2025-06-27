@@ -82,7 +82,7 @@ Gcal.js を起動すると，3つのテーブルが表示される．
 
 ### 予定の追加・編集・削除機能および使用できるコマンド
 それぞれの操作方法や，仕様，詳細については以下を参照．
-- [予定の追加](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/add.md)
+- [予定の追加](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/add.md) (2025/6/27 LLM を用いた予定の追加方法について加筆)
 
 - [予定の編集](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/edit.md)
 
@@ -113,6 +113,7 @@ Gcal.js を起動すると，3つのテーブルが表示される．
 | `q` or `Ctrl + c` | Gcal.js の終了       |
 | `a`               | 予定の追加           |
 | `n`               | カーソルを来週へ移動 |
+| `l`               | LLM で予定を追加     |
 | `p`               | カーソルを先週へ移動 |
 | `Ctrl + n`        | カーソルを来月へ移動 |
 | `Ctrl + p`        | カーソルを先月へ移動 |
