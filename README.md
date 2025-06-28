@@ -103,6 +103,8 @@ Please refer to the following for operation methods, specifications, and details
 
 - [Sync with Google Calendar](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/sync.md)
 
+- [Toggle table](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/toggle.md)
+
 ## Commands
 
 | Command       | Description                                                                     |
@@ -121,16 +123,17 @@ Some functions and commands have shortcuts.
 You can also assign your own preferred keys.  
 The default key bindings are shown below.
 
-| Key               | Description                |
-| ----------------- | -------------------------- |
-| `q` or `Ctrl + c` | Exit the program           |
-| `a`               | Add a new event            |
-| `n`               | Jump to one week later     |
-| `l`               | Add event with LLM         |
-| `p`               | Jump to one week earlier   |
-| `Ctrl + n`        | Jump to the next month     |
-| `Ctrl + p`        | Jump to the previous month |
-| `t`               | Jump to today              |
+| Key               | Description                              |
+| ----------------- | ---------------------------------------- |
+| `1`,`2`or`3`      | Toggle display each table in full screen |
+| `q` or `Ctrl + c` | Exit the program                         |
+| `a`               | Add a new event                          |
+| `n`               | Jump to one week later                   |
+| `l`               | Add event with LLM                       |
+| `p`               | Jump to one week earlier                 |
+| `Ctrl + n`        | Jump to the next month                   |
+| `Ctrl + p`        | Jump to the previous month               |
+| `t`               | Jump to today                            |
 
 Set your key bindings:  
 Edit setting.json, key bindings can be changed.
