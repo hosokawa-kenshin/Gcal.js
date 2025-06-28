@@ -27,6 +27,18 @@
         "today": [
             "t",
             "home"
+        ],
+        "fullscreenTable1": [
+            "1"
+        ],
+        "fullscreenTable2": [
+            "2"
+        ],
+        "fullscreenTable3": [
+            "3"
+        ],
+        "exitFullscreen": [
+            "escape"
         ]
     }
 }

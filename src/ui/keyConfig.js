@@ -2,6 +2,7 @@ import { jumpCommand } from '../commands/jump.js';
 import { addEvent } from '../commands/add.js';
 import { addEventNL } from '../commands/addNL.js';
 import { editEvent } from '../commands/edit.js';
+import { toggleFullscreen } from './layout.js';
 
 export function setupVimKeysForNavigation(widget, screen, focusbackwith) {
     screen.key(['j', 'k', 'h', 'l'], (ch, key) => {
@@ -60,6 +61,11 @@ export function setupKeyBindings(screen, auth, calendars, events, allEvents, inp
         inputBox.focus();
         screen.render();
     });
+
+    screen.key(keyBindings.fullscreenTable1 || ['1'], () => toggleFullscreen(1));
+    screen.key(keyBindings.fullscreenTable2 || ['2'], () => toggleFullscreen(2));
+    screen.key(keyBindings.fullscreenTable3 || ['3'], () => toggleFullscreen(3));
+    screen.key(keyBindings.exitFullscreen || ['escape'], () => toggleFullscreen(0));
 }
 
 export function getDefaultKeyBindings() {
@@ -73,5 +79,9 @@ export function getDefaultKeyBindings() {
         prevMonth: ['C-p'],
         today: ['t'],
         toggleCommandLine: ['space'],
+        fullscreenTable1: ['1'],
+        fullscreenTable2: ['2'],
+        fullscreenTable3: ['3'],
+        exitFullscreen: ['escape'],
     };
 }
