@@ -36,6 +36,7 @@
 - Node.js
 - Google Cloud ConsoleでGoogle Calendar APIが有効になっていること
 - credentials.jsonファイルがGoogle Cloud Consoleから取得され，プログラムのディレクトリに配置されていること
+  - 詳細な設定手順については，[Google Calendar API 認証情報設定手順](./docs/oauth-ja.md)を参照
 
 ## Setup
 ### 依存パッケージのインストール
