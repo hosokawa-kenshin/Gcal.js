@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { updateTable, groupEventsByDate } from '../ui/layout.js';
+import { updateTable, groupEventsByDate, formatGroupedEventsDescending } from '../ui/layout.js';
 import { splitDateTimeIntoDateAndTime, convertToDateTime } from '../utils/dateUtils.js';
 import { createAddForm } from '../ui/form.js';
 import { updateEventDetailTable } from '../ui/table.js';
@@ -558,6 +558,10 @@ Description | ${formFields.description.getValue().trim()}
         screen.append(eventTable);
         eventTable.show();
         editCommandList.hide();
+
+        const currentEvents = formatGroupedEventsDescending(events);
+        eventTable.setItems(currentEvents);
+
         eventTable.focus();
         screen.render();
         const now = new Date();
