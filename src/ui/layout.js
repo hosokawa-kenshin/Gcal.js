@@ -21,16 +21,12 @@ let originalLayouts = {}; // 各テーブルの元の位置・サイズ情報
 let tableReferences = {}; // テーブル参照を保持
 
 /**
- * 各displayItemは { date: Date, event: Event | null, isFirstDay: boolean } の形式
- * 複数日イベントは各日に展開され，イベントのない日は event: null となる
+ * イベントを日付ごとに展開してMapに格納する共通処理
+ * 複数日イベントは各日に展開され，各日に { event, isFirstDay } の配列が格納される
+ * @param {Array} events - イベントの配列
+ * @returns {Map} dateKey -> [{ event, isFirstDay }] のマップ
  */
-export function createDisplayItems(events, referenceDate) {
-  const displayItems = [];
-
-  const refDate = referenceDate || new Date();
-  const startDate = new Date(`${refDate.getFullYear() - 1}-01-01T00:00:00`);
-  const endDate = new Date(`${refDate.getFullYear() + 1}-12-31T23:59:00`);
-
+function expandEventsToDateMap(events) {
   const dateEventMap = new Map();
 
   events.forEach(event => {
@@ -67,6 +63,43 @@ export function createDisplayItems(events, referenceDate) {
       }
     }
   });
+
+  return dateEventMap;
+}
+
+/**
+ * イベントが存在する日のみのdisplayItemsを作成（findコマンド用）
+ * 各displayItemは { date: Date, event: Event, isFirstDay: boolean } の形式
+ * 複数日イベントは各日に展開される
+ */
+export function createDisplayItemsForEvents(events) {
+  const displayItems = [];
+  const dateEventMap = expandEventsToDateMap(events);
+
+  for (const [dateKey, dayEvents] of dateEventMap) {
+    const date = new Date(dateKey + 'T00:00:00');
+    dayEvents.forEach(({ event, isFirstDay }) => {
+      displayItems.push({ date: new Date(date), event, isFirstDay });
+    });
+  }
+
+  displayItems.sort((a, b) => a.date - b.date);
+
+  return displayItems;
+}
+
+/**
+ * 各displayItemは { date: Date, event: Event | null, isFirstDay: boolean } の形式
+ * 複数日イベントは各日に展開され，イベントのない日は event: null となる
+ */
+export function createDisplayItems(events, referenceDate) {
+  const displayItems = [];
+
+  const refDate = referenceDate || new Date();
+  const startDate = new Date(`${refDate.getFullYear() - 1}-01-01T00:00:00`);
+  const endDate = new Date(`${refDate.getFullYear() + 1}-12-31T23:59:00`);
+
+  const dateEventMap = expandEventsToDateMap(events);
 
   const currentDate = new Date(startDate);
   while (currentDate <= endDate) {
@@ -256,46 +289,6 @@ export function formatDisplayItems(displayItems) {
   return formattedData;
 }
 
-// 後方互換性のため、旧関数も残す（非推奨）
-export function formatGroupedEvents(events) {
-  const groupedEvents = groupEventsByDate(events);
-  const formattedData = [];
-  var beforeDateKey = null;
-  Object.keys(groupedEvents).forEach(dateKey => {
-    groupedEvents[dateKey].forEach(event => {
-      const startTime = event.start.toTimeString().slice(0, 5);
-      const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
-      const time = endTime ? `${startTime}-${endTime}` : startTime;
-      const summary = event.summary;
-      const calendarName = `[${event.calendarName}]`;
-      let coloredDate = dateKey;
-
-      if (dateKey === beforeDateKey) {
-        coloredDate = ''.padEnd(dateKey.length);
-      } else {
-        const date = new Date(event.start);
-        const day = date.getDay();
-        if (day === 6) {
-          coloredDate = colorDate(dateKey, 'blue');
-        } else if (day === 0 || isHoliday(date)) {
-          coloredDate = colorDate(dateKey, 'red');
-        } else {
-          coloredDate = colorDate(dateKey, 'normal');
-        }
-      }
-      beforeDateKey = dateKey;
-      if (time === '00:00-00:00') {
-        formattedData.push(`${coloredDate}`);
-      } else if (startTime === endTime) {
-        formattedData.push(`${coloredDate}  終日         ${summary}  ${calendarName}`);
-      } else {
-        formattedData.push(`${coloredDate}  ${time}  ${summary}  ${calendarName}`);
-      }
-    });
-  });
-  return formattedData;
-}
-
 export function formatGroupedEventsDescending(events) {
   const now = new Date();
   now.setHours(23, 59, 59, 99);
@@ -364,10 +357,9 @@ export async function updateTable(auth, table, calendars, events, allEvents) {
     )
   );
 
-  // 新しいdisplayItems構造を使用
   const displayItems = createDisplayItems(events, new Date());
   const formattedEvents = formatDisplayItems(displayItems);
-  table.displayItems = displayItems; // テーブルにdisplayItemsを保持
+  table.displayItems = displayItems;
   table.setItems(formattedEvents);
   table.select(searchDisplayItemIndex(new Date(), displayItems));
   table.scrollTo(table.selected + table.height - 3);
@@ -396,10 +388,9 @@ export function updateEventsAndUI(
   );
   events.sort((a, b) => a.start - b.start);
 
-  // 新しいdisplayItems構造を使用
   const displayItems = createDisplayItems(events, targetDate);
   const formattedEvents = formatDisplayItems(displayItems);
-  leftTable.displayItems = displayItems; // テーブルにdisplayItemsを保持
+  leftTable.displayItems = displayItems;
   leftTable.setItems(formattedEvents);
   index = searchDisplayItemIndex(targetDate, displayItems);
   leftTable.select(index);
@@ -833,10 +824,9 @@ export function createLayout(calendars, events) {
 
   const leftTable = createLeftTable(screen);
 
-  // 新しいdisplayItems構造を使用
   const displayItems = createDisplayItems(events, new Date());
   const formattedEvents = formatDisplayItems(displayItems);
-  leftTable.displayItems = displayItems; // テーブルにdisplayItemsを保持
+  leftTable.displayItems = displayItems;
 
   const eventTable = createEventTable(screen);
   const currentEvents = formatGroupedEventsDescending(events);
