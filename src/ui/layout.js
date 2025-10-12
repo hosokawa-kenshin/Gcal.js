@@ -4,7 +4,12 @@ import { insertEventsToDatabase, fetchEventsFromDatabase } from '../services/dat
 import { fetchCommandList } from '../services/commandService.js';
 import { setupVimKeysForNavigation } from './keyConfig.js';
 import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
-import { createEventDetailTable, createEventTable, createLeftTable, createLogTable } from './table.js';
+import {
+  createEventDetailTable,
+  createEventTable,
+  createLeftTable,
+  createLogTable,
+} from './table.js';
 import { createGraph, insertDataToGraph } from './graph.js';
 import Event from '../models/event.js';
 import pkg from 'japanese-holidays';
@@ -15,163 +20,121 @@ let currentDisplayMode = 'split'; // 'split', 'fullscreen1', 'fullscreen2', 'ful
 let originalLayouts = {}; // 各テーブルの元の位置・サイズ情報
 let tableReferences = {}; // テーブル参照を保持
 
-export function fillEmptyEvents(events, date) {
-  const filledEvents = [];
-  if (date) {
-    const lastEventDate = new Date(`${date.getFullYear() + 1}-12-31T23:59:00`);
-    const filledDate = new Date(`${date.getFullYear() - 1}-01-01T00:00:00`);
-    filledDate.setHours(0, 0, 0, 0);
-    if (events.length === 0) {
-      while (filledDate < lastEventDate) {
-        filledDate.setDate(filledDate.getDate() + 1);
-        filledEvents.push(
-          new Event(
-            '',
-            new Date(filledDate),
-            new Date(filledDate),
-            '',
-            null,
-            null
-          )
-        );
-      }
-      events.length = 0;
-      events.push(...filledEvents);
-      return events;
-    }
+/**
+ * 各displayItemは { date: Date, event: Event | null, isFirstDay: boolean } の形式
+ * 複数日イベントは各日に展開され，イベントのない日は event: null となる
+ */
+export function createDisplayItems(events, referenceDate) {
+  const displayItems = [];
 
-    const firstEventDate = new Date(events[0].start);
-    firstEventDate.setHours(0, 0, 0, 0);
-    while (filledDate < firstEventDate) {
-      filledDate.setDate(filledDate.getDate() + 1);
-      if (filledDate < firstEventDate) {
-        filledEvents.push(
-          new Event(
-            '',
-            new Date(filledDate),
-            new Date(filledDate),
-            '',
-            null,
-            null
-          )
-        );
-      }
-    }
+  const refDate = referenceDate || new Date();
+  const startDate = new Date(`${refDate.getFullYear() - 1}-01-01T00:00:00`);
+  const endDate = new Date(`${refDate.getFullYear() + 1}-12-31T23:59:00`);
 
-    for (let i = 0; i < events.length; i++) {
-      filledEvents.push(events[i]);
-      if (i < events.length - 1) {
-        const currentEventStart = new Date(events[i].start);
-        currentEventStart.setHours(0, 0, 0, 0);
-        const nextEventStart = new Date(events[i + 1].start);
-        nextEventStart.setHours(0, 0, 0, 0);
-        while (currentEventStart < nextEventStart) {
-          currentEventStart.setDate(currentEventStart.getDate() + 1);
-          if (currentEventStart < nextEventStart) {
-            filledEvents.push(
-              new Event(
-                '',
-                new Date(currentEventStart),
-                new Date(currentEventStart),
-                '',
-                null,
-                null
-              )
-            );
-          }
+  const dateEventMap = new Map();
+
+  events.forEach(event => {
+    const eventStart = new Date(event.start);
+    const eventEnd = new Date(event.end);
+    eventStart.setHours(0, 0, 0, 0);
+    eventEnd.setHours(0, 0, 0, 0);
+
+    const daysDiff = Math.round(
+      (eventEnd.getTime() - eventStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (
+      daysDiff === 0 ||
+      (daysDiff === 1 &&
+        event.start.toTimeString().slice(0, 5) === event.end.toTimeString().slice(0, 5))
+    ) {
+      const dateKey = eventStart.toLocalISOString().split('T')[0];
+      if (!dateEventMap.has(dateKey)) {
+        dateEventMap.set(dateKey, []);
+      }
+      dateEventMap.get(dateKey).push({ event, isFirstDay: true });
+    } else {
+      const currentDate = new Date(eventStart);
+      let isFirst = true;
+      while (currentDate < eventEnd) {
+        const dateKey = currentDate.toLocalISOString().split('T')[0];
+        if (!dateEventMap.has(dateKey)) {
+          dateEventMap.set(dateKey, []);
         }
+        dateEventMap.get(dateKey).push({ event, isFirstDay: isFirst });
+        isFirst = false;
+        currentDate.setDate(currentDate.getDate() + 1);
       }
     }
+  });
 
-    const filledDate2 = new Date(events[events.length - 1].start);
-    filledDate2.setHours(0, 0, 0, 0);
-    while (filledDate2 < lastEventDate) {
-      filledDate2.setDate(filledDate2.getDate() + 1);
-      if (filledDate2 < lastEventDate) {
-        filledEvents.push(
-          new Event(
-            '',
-            new Date(filledDate2),
-            new Date(filledDate2),
-            '',
-            null,
-            null
-          )
-        );
-      }
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    const dateKey = currentDate.toLocalISOString().split('T')[0];
+    const date = new Date(currentDate);
+
+    if (dateEventMap.has(dateKey)) {
+      const dayEvents = dateEventMap.get(dateKey);
+      dayEvents.forEach(({ event, isFirstDay }) => {
+        displayItems.push({ date: new Date(date), event, isFirstDay });
+      });
+    } else {
+      displayItems.push({
+        date: new Date(date),
+        event: null,
+        isFirstDay: true,
+      });
     }
 
-    events.length = 0;
-    events.push(...filledEvents);
-    return events;
+    currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  for (let i = 0; i < events.length; i++) {
-    filledEvents.push(events[i]);
-    if (i < events.length - 1) {
-      const currentEventStart = new Date(events[i].start);
-      currentEventStart.setHours(0, 0, 0, 0);
-      const nextEventStart = new Date(events[i + 1].start);
-      nextEventStart.setHours(0, 0, 0, 0);
-      while (currentEventStart < nextEventStart) {
-        currentEventStart.setDate(currentEventStart.getDate() + 1);
-        if (currentEventStart < nextEventStart) {
-          filledEvents.push(
-            new Event(
-              '',
-              new Date(currentEventStart),
-              new Date(currentEventStart),
-              '',
-              null,
-              null
-            )
-          );
-        }
-      }
-    }
-  }
-
-  events.length = 0;
-  events.push(...filledEvents);
-  return events;
+  return displayItems;
 }
 
-export function searchIndexOfToday(events) {
+export function searchDisplayItemIndex(date, displayItems) {
+  const searchDate = new Date(date);
+  searchDate.setHours(0, 0, 0, 0);
+  const searchDateKey = searchDate.toLocalISOString().slice(0, 10);
+
+  for (let i = 0; i < displayItems.length; i++) {
+    const itemDate = new Date(displayItems[i].date);
+    itemDate.setHours(0, 0, 0, 0);
+    const itemDateKey = itemDate.toLocalISOString().slice(0, 10);
+
+    if (itemDateKey === searchDateKey) {
+      return i;
+    } else if (itemDate > searchDate) {
+      return i;
+    }
+  }
+
+  return displayItems.length > 0 ? displayItems.length - 1 : 0;
+}
+
+export function searchDisplayItemIndexOfToday(displayItems) {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  let index = 0;
-  for (index = 0; index < events.length; index++) {
-    const event = events[index];
-    const eventDate = new Date(event.start);
-    eventDate.setHours(0, 0, 0, 0);
-    if (eventDate.toLocalISOString().slice(0, 10) === today.toLocalISOString().slice(0, 10)) {
-      return index;
-    } else if (eventDate > today) {
-      return index;
-    }
-  }
-  return index;
+  return searchDisplayItemIndex(today, displayItems);
 }
 
-export function searchIndex(date, events) {
-  const today = new Date(date);
-  today.setHours(0, 0, 0, 0);
-  let index = 0;
-  for (index = 0; index < events.length; index++) {
-    const event = events[index];
-    const eventDate = new Date(event.start);
-    eventDate.setHours(0, 0, 0, 0);
-    if (eventDate.toLocalISOString().slice(0, 10) === today.toLocalISOString().slice(0, 10)) {
-      return index;
-    } else if (eventDate > today) {
-      return index;
-    }
-  }
-  return index;
-}
+/**
+ * グラフを更新（新しいdisplayItems構造に対応）
+ * displayItemsが利用可能な場合はそれを使用し、なければ後方互換性のためeventsを使用
+ */
+export function updateGraph(screen, rightGraph, index, events, displayItems = null) {
+  let currentEventDate;
 
-export function updateGraph(screen, rightGraph, index, events) {
-  const currentEventDate = new Date(events[index].start);
+  if (displayItems && displayItems[index]) {
+    // 新しいdisplayItems構造を使用
+    currentEventDate = new Date(displayItems[index].date);
+  } else if (events && events[index]) {
+    // 後方互換性のため、旧方式もサポート
+    currentEventDate = new Date(events[index].start);
+  } else {
+    // どちらも利用できない場合は今日の日付を使用
+    currentEventDate = new Date();
+  }
+
   const monday = new Date(currentEventDate);
   const currentDayOfWeek = monday.getDay();
   const offsetToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
@@ -186,7 +149,7 @@ export function updateGraph(screen, rightGraph, index, events) {
 
   const filledTime = [];
   const groupedEvents = groupEventsByDate(events);
-  weekDates.forEach((dateKey) => {
+  weekDates.forEach(dateKey => {
     const year = Number(dateKey.split('-')[0]);
     const month = Number(dateKey.split('-')[1]);
     const day = parseInt(dateKey.split('-')[2], 10);
@@ -194,7 +157,7 @@ export function updateGraph(screen, rightGraph, index, events) {
     const formattedDateKey = dateKey + '(' + dayOfWeek + ')';
 
     const dayEvents = groupedEvents[formattedDateKey] || [];
-    const dayTimes = dayEvents.map((event) => {
+    const dayTimes = dayEvents.map(event => {
       const startTime = event.start.toTimeString().slice(0, 5);
       const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
       return endTime ? `${startTime}-${endTime}` : startTime;
@@ -229,43 +192,107 @@ export function groupEventsByDate(events) {
   }, {});
 }
 
+/**
+ * displayItems配列からテーブル表示用の文字列配列を生成
+ */
+export function formatDisplayItems(displayItems) {
+  const formattedData = [];
+  let beforeDateKey = null;
+
+  displayItems.forEach(item => {
+    const { date, event, isFirstDay } = item;
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayOfWeek = getDayOfWeek(year, month, day);
+    const dateKey = date.toLocalISOString().split('T')[0] + '(' + dayOfWeek + ')';
+
+    if (!event) {
+      let coloredDate = dateKey;
+      const dayNum = date.getDay();
+      if (dayNum === 6) {
+        coloredDate = colorDate(dateKey, 'blue');
+      } else if (dayNum === 0 || isHoliday(date)) {
+        coloredDate = colorDate(dateKey, 'red');
+      } else {
+        coloredDate = colorDate(dateKey, 'normal');
+      }
+      formattedData.push(`${coloredDate}`);
+      beforeDateKey = dateKey;
+      return;
+    }
+
+    const startTime = event.start.toTimeString().slice(0, 5);
+    const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
+    const time = endTime ? `${startTime}-${endTime}` : startTime;
+    const summary = event.summary;
+    const calendarName = `[${event.calendarName}]`;
+    let coloredDate = dateKey;
+
+    if (dateKey === beforeDateKey) {
+      coloredDate = ''.padEnd(dateKey.length);
+    } else {
+      const dayNum = date.getDay();
+      if (dayNum === 6) {
+        coloredDate = colorDate(dateKey, 'blue');
+      } else if (dayNum === 0 || isHoliday(date)) {
+        coloredDate = colorDate(dateKey, 'red');
+      } else {
+        coloredDate = colorDate(dateKey, 'normal');
+      }
+    }
+
+    beforeDateKey = dateKey;
+
+    if (time === '00:00-00:00') {
+      formattedData.push(`${coloredDate}`);
+    } else if (startTime === endTime) {
+      formattedData.push(`${coloredDate}  終日         ${summary}  ${calendarName}`);
+    } else {
+      formattedData.push(`${coloredDate}  ${time}  ${summary}  ${calendarName}`);
+    }
+  });
+
+  return formattedData;
+}
+
+// 後方互換性のため、旧関数も残す（非推奨）
 export function formatGroupedEvents(events) {
   const groupedEvents = groupEventsByDate(events);
   const formattedData = [];
   var beforeDateKey = null;
-  Object.keys(groupedEvents)
-    .forEach((dateKey) => {
-      groupedEvents[dateKey].forEach((event) => {
-        const startTime = event.start.toTimeString().slice(0, 5);
-        const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
-        const time = endTime ? `${startTime}-${endTime}` : startTime;
-        const summary = event.summary;
-        const calendarName = `[${event.calendarName}]`;
-        let coloredDate = dateKey;
+  Object.keys(groupedEvents).forEach(dateKey => {
+    groupedEvents[dateKey].forEach(event => {
+      const startTime = event.start.toTimeString().slice(0, 5);
+      const endTime = event.end ? event.end.toTimeString().slice(0, 5) : '';
+      const time = endTime ? `${startTime}-${endTime}` : startTime;
+      const summary = event.summary;
+      const calendarName = `[${event.calendarName}]`;
+      let coloredDate = dateKey;
 
-        if (dateKey === beforeDateKey) {
-          coloredDate = "".padEnd(dateKey.length);
+      if (dateKey === beforeDateKey) {
+        coloredDate = ''.padEnd(dateKey.length);
+      } else {
+        const date = new Date(event.start);
+        const day = date.getDay();
+        if (day === 6) {
+          coloredDate = colorDate(dateKey, 'blue');
+        } else if (day === 0 || isHoliday(date)) {
+          coloredDate = colorDate(dateKey, 'red');
         } else {
-          const date = new Date(event.start);
-          const day = date.getDay()
-          if (day === 6) {
-            coloredDate = colorDate(dateKey, 'blue');
-          } else if (day === 0 || isHoliday(date)) {
-            coloredDate = colorDate(dateKey, 'red');
-          } else {
-            coloredDate = colorDate(dateKey, 'normal');
-          }
+          coloredDate = colorDate(dateKey, 'normal');
         }
-        beforeDateKey = dateKey;
-        if (time === '00:00-00:00') {
-          formattedData.push(`${coloredDate}`);
-        } else if (startTime === endTime) {
-          formattedData.push(`${coloredDate}  終日         ${summary}  ${calendarName}`);
-        } else {
-          formattedData.push(`${coloredDate}  ${time}  ${summary}  ${calendarName}`);
-        }
-      });
+      }
+      beforeDateKey = dateKey;
+      if (time === '00:00-00:00') {
+        formattedData.push(`${coloredDate}`);
+      } else if (startTime === endTime) {
+        formattedData.push(`${coloredDate}  終日         ${summary}  ${calendarName}`);
+      } else {
+        formattedData.push(`${coloredDate}  ${time}  ${summary}  ${calendarName}`);
+      }
     });
+  });
   return formattedData;
 }
 
@@ -293,7 +320,7 @@ export function formatGroupedEventsDescending(events) {
       let coloredDate = dateKey;
 
       if (dateKey === beforeDateKey) {
-        coloredDate = "".padEnd(dateKey.length);
+        coloredDate = ''.padEnd(dateKey.length);
       } else {
         const date = new Date(event.start);
         const day = date.getDay();
@@ -328,30 +355,56 @@ export async function updateTable(auth, table, calendars, events, allEvents) {
   const fetchedEvent = await fetchEventsFromDatabase(calendars);
   allEvents.push(...fetchedEvent);
   events.length = 0;
-  events.push(...allEvents.filter((event) => event.start.getFullYear() === new Date().getFullYear() || event.start.getFullYear() === new Date().getFullYear() + 1 || event.start.getFullYear() === new Date().getFullYear() - 1));
-  fillEmptyEvents(events, new Date());
-  const formattedEvents = formatGroupedEvents(events);
+  events.push(
+    ...allEvents.filter(
+      event =>
+        event.start.getFullYear() === new Date().getFullYear() ||
+        event.start.getFullYear() === new Date().getFullYear() + 1 ||
+        event.start.getFullYear() === new Date().getFullYear() - 1
+    )
+  );
+
+  // 新しいdisplayItems構造を使用
+  const displayItems = createDisplayItems(events, new Date());
+  const formattedEvents = formatDisplayItems(displayItems);
+  table.displayItems = displayItems; // テーブルにdisplayItemsを保持
   table.setItems(formattedEvents);
-  table.select(searchIndex(new Date, events));
+  table.select(searchDisplayItemIndex(new Date(), displayItems));
   table.scrollTo(table.selected + table.height - 3);
   table.screen.render();
 }
 
-export function updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, message) {
+export function updateEventsAndUI(
+  screen,
+  events,
+  allEvents,
+  leftTable,
+  rightGraph,
+  logTable,
+  targetDate,
+  index,
+  message
+) {
   events.length = 0;
-  events.push(...allEvents.filter(event =>
-    event.start.getFullYear() === targetDate.getFullYear() ||
-    event.start.getFullYear() === targetDate.getFullYear() + 1 ||
-    event.start.getFullYear() === targetDate.getFullYear() - 1
-  ));
+  events.push(
+    ...allEvents.filter(
+      event =>
+        event.start.getFullYear() === targetDate.getFullYear() ||
+        event.start.getFullYear() === targetDate.getFullYear() + 1 ||
+        event.start.getFullYear() === targetDate.getFullYear() - 1
+    )
+  );
   events.sort((a, b) => a.start - b.start);
-  fillEmptyEvents(events, targetDate);
-  const formattedEvents = formatGroupedEvents(events);
+
+  // 新しいdisplayItems構造を使用
+  const displayItems = createDisplayItems(events, targetDate);
+  const formattedEvents = formatDisplayItems(displayItems);
+  leftTable.displayItems = displayItems; // テーブルにdisplayItemsを保持
   leftTable.setItems(formattedEvents);
-  index = searchIndex(targetDate, events);
+  index = searchDisplayItemIndex(targetDate, displayItems);
   leftTable.select(index);
   leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
-  updateGraph(screen, rightGraph, index, events);
+  updateGraph(screen, rightGraph, index, events, displayItems);
   logTable.log(message);
   screen.render();
 }
@@ -367,7 +420,7 @@ export function saveOriginalLayout(table, tableId) {
     left: table.left,
     width: table.width,
     height: table.height,
-    hidden: table.hidden
+    hidden: table.hidden,
   };
 }
 
@@ -379,22 +432,22 @@ export function recalculateDefaultLayouts() {
       left: 0,
       width: '50%',
       height: '100%',
-      hidden: false
+      hidden: false,
     },
     rightGraph: {
       top: 0,
       left: '50%',
       width: '50%',
       height: '80%',
-      hidden: false
+      hidden: false,
     },
     logTable: {
       top: '80%',
       left: '50%',
       width: '50%',
       height: '22%',
-      hidden: false
-    }
+      hidden: false,
+    },
   };
 
   // originalLayoutsを新しいデフォルト値で更新
@@ -520,9 +573,7 @@ export function removeCommandPopup() {
 }
 
 export function createLayout(calendars, events) {
-  const calendarNames = Array.from(
-    new Set(calendars.map(calendar => calendar.summary))
-  );
+  const calendarNames = Array.from(new Set(calendars.map(calendar => calendar.summary)));
 
   const commands = fetchCommandList();
 
@@ -550,7 +601,7 @@ export function createLayout(calendars, events) {
       fg: 'white',
     },
     inputOnFocus: true,
-    hidden: true
+    hidden: true,
   });
 
   inputBox.on('show', () => {
@@ -604,8 +655,9 @@ export function createLayout(calendars, events) {
     const currentInput = inputBox.getValue().trim();
     const commands = fetchCommandList();
 
-    const matchingCommands = commands.filter(cmd =>
-      cmd.startsWith(currentInput) && cmd !== currentInput);
+    const matchingCommands = commands.filter(
+      cmd => cmd.startsWith(currentInput) && cmd !== currentInput
+    );
 
     if (matchingCommands.length === 1) {
       inputBox.setValue(matchingCommands[0] + ' ');
@@ -646,8 +698,7 @@ export function createLayout(calendars, events) {
     let filteredCommands = commands;
 
     if (input) {
-      filteredCommands = commands.filter(cmd =>
-        cmd.startsWith(input));
+      filteredCommands = commands.filter(cmd => cmd.startsWith(input));
     }
 
     if (filteredCommands.length === 0) {
@@ -670,14 +721,14 @@ export function createLayout(calendars, events) {
         style: {
           fg: 'white',
           bg: 'black',
-          selected: { fg: 'black', bg: 'green' }
+          selected: { fg: 'black', bg: 'green' },
         },
         keys: true,
         mouse: true,
-        scrollable: true
+        scrollable: true,
       });
 
-      commandPopup.on('select', (item) => {
+      commandPopup.on('select', item => {
         inputBox.setValue(item + ' ');
         screen.render();
         inputBox.focus();
@@ -708,7 +759,7 @@ export function createLayout(calendars, events) {
     style: {
       fg: 'white',
       bg: 'black',
-      selected: { fg: 'black', bg: 'green' }
+      selected: { fg: 'black', bg: 'green' },
     },
     hidden: true,
     mouse: true,
@@ -720,13 +771,19 @@ export function createLayout(calendars, events) {
     left: 'center',
     width: '50%',
     height: '20%',
-    items: ['選択日にイベントを追加', 'イベントを編集', 'イベントをコピー', 'イベントを削除', '他のイベントを参照して選択日にコピー'],
+    items: [
+      '選択日にイベントを追加',
+      'イベントを編集',
+      'イベントをコピー',
+      'イベントを削除',
+      '他のイベントを参照して選択日にコピー',
+    ],
     label: 'Edit List',
     border: { type: 'line', fg: 'yellow' },
     style: {
       fg: 'white',
       bg: 'black',
-      selected: { fg: 'black', bg: 'green' }
+      selected: { fg: 'black', bg: 'green' },
     },
     hidden: true,
     mouse: true,
@@ -744,7 +801,7 @@ export function createLayout(calendars, events) {
     style: {
       fg: 'white',
       bg: 'black',
-      selected: { fg: 'black', bg: 'green' }
+      selected: { fg: 'black', bg: 'green' },
     },
     hidden: true,
     mouse: true,
@@ -764,15 +821,23 @@ export function createLayout(calendars, events) {
   const keypressListener = (_, key) => {
     if (key.name === 'j' || key.name === 'k') {
       const currentIndex = leftTable.selected;
-      if (events[currentIndex].start.getDay() === 0 || events[currentIndex].start.getDay() === 1) {
-        updateGraph(screen, rightGraph, currentIndex, events);
+      // displayItems構造を使用する場合、eventsの代わりにdisplayItemsから情報を取得
+      if (leftTable.displayItems && leftTable.displayItems[currentIndex]) {
+        const item = leftTable.displayItems[currentIndex];
+        if (item.date.getDay() === 0 || item.date.getDay() === 1) {
+          updateGraph(screen, rightGraph, currentIndex, events, leftTable.displayItems);
+        }
       }
     }
   };
 
   const leftTable = createLeftTable(screen);
-  fillEmptyEvents(events, new Date());
-  const formattedEvents = formatGroupedEvents(events);
+
+  // 新しいdisplayItems構造を使用
+  const displayItems = createDisplayItems(events, new Date());
+  const formattedEvents = formatDisplayItems(displayItems);
+  leftTable.displayItems = displayItems; // テーブルにdisplayItemsを保持
+
   const eventTable = createEventTable(screen);
   const currentEvents = formatGroupedEventsDescending(events);
   leftTable.setItems(formattedEvents);
@@ -781,9 +846,9 @@ export function createLayout(calendars, events) {
   leftTable.on('keypress', keypressListener);
   const logTable = createLogTable(screen);
   logTable.log('Welcome to Gcal.js!');
-  leftTable.select(searchIndexOfToday(events));
+  leftTable.select(searchDisplayItemIndexOfToday(displayItems));
   leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
-  updateGraph(screen, rightGraph, leftTable.selected, events);
+  updateGraph(screen, rightGraph, leftTable.selected, events, displayItems);
   const eventDetailTable = createEventDetailTable(screen);
 
   screen.append(inputBox);
