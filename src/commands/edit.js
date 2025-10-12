@@ -100,17 +100,30 @@ function isAllDayEvent(event) {
   return Boolean(event?.start?.date && !event?.start?.dateTime);
 }
 
-function eventToFormValues(event) {
-  const { date: startDate, time: startTime } = splitDateTimeIntoDateAndTime(event?.start ?? {});
-  const { date: endDate, time: endTime } = splitDateTimeIntoDateAndTime(event?.end ?? {});
+function formatDate(dateLike) {
+  if (!dateLike) {
+    return null;
+  }
+
+  const dateObj = new Date(dateLike);
+  if (Number.isNaN(dateObj.getTime())) {
+    return null;
+  }
+
+  return splitDateTimeIntoDateAndTime(dateObj);
+}
+
+function eventToFormValues(event, fallbackDate = null) {
+  const startInfo = formatDate(event?.start) || formatDate(fallbackDate);
+  const endInfo = formatDate(event?.end) || startInfo;
 
   return {
     title: event?.summary || '',
-    date: startDate || endDate || '',
-    startTime: startTime || '',
-    endTime: endTime || '',
+    date: startInfo?.date || '',
+    startTime: event ? startInfo?.time || '' : '',
+    endTime: event ? endInfo?.time || '' : '',
     description: event?.description || '',
-    allDay: isAllDayEvent(event),
+    allDay: event ? isAllDayEvent(event) : false,
   };
 }
 
@@ -199,7 +212,15 @@ function setupSaveShortcut({ formBox, formFields, handler, options }) {
   assignKeyHandler(formBox, ['C-s'], wrappedHandler, SAVE_HANDLER_KEY);
 }
 
-export function editEvent(auth, screen, calendars, selectedEvent, events, allEvents) {
+export function editEvent(
+  auth,
+  screen,
+  calendars,
+  selectedEvent,
+  events,
+  allEvents,
+  selectedDate = null
+) {
   const calendar = google.calendar({ version: 'v3', auth });
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
@@ -209,12 +230,10 @@ export function editEvent(auth, screen, calendars, selectedEvent, events, allEve
   const eventDetailTable = screen.children.find(child => child.options.label === 'Event Details');
   const { formBox, formFields } = createAddForm(screen);
   const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
-  const selectedCalendarId = selectedEvent.calendarId;
-  const selectedEventsId = selectedEvent.id;
-  const { date: startDate, time: startTime } = splitDateTimeIntoDateAndTime(
-    selectedEvent.start ?? {}
-  );
-  const { time: endTime } = splitDateTimeIntoDateAndTime(selectedEvent.end ?? {});
+  const selectedCalendarId = selectedEvent?.calendarId ?? null;
+  const selectedEventsId = selectedEvent?.id ?? null;
+  const fallbackDate = selectedEvent?.start || selectedDate || new Date();
+  const fallbackDateInfo = formatDate(fallbackDate);
   const calendarNames = Array.from(new Set(calendars.map(calendar => calendar.summary)));
   const calendarIDs = Array.from(new Set(calendars.map(calendar => calendar.id)));
 
@@ -304,7 +323,7 @@ export function editEvent(auth, screen, calendars, selectedEvent, events, allEve
     switch (index) {
       case 0:
         promptCalendarSelection(async (selectedEditCalendar, selectedEditCalendarId) => {
-          const baseValues = eventToFormValues(selectedEvent);
+          const baseValues = eventToFormValues(selectedEvent, fallbackDate);
           const initialValues = {
             ...baseValues,
             title: '',
@@ -354,7 +373,13 @@ export function editEvent(auth, screen, calendars, selectedEvent, events, allEve
 
       case 1:
         promptCalendarSelection(async (selectedEditCalendar, selectedEditCalendarId) => {
-          const initialValues = eventToFormValues(selectedEvent);
+          if (!selectedEvent || !selectedCalendarId || !selectedEventsId) {
+            logTable.log('Error: No event selected to move.');
+            screen.render();
+            return;
+          }
+
+          const initialValues = eventToFormValues(selectedEvent, fallbackDate);
 
           await prepareForm({
             label: `Edit Event - ${selectedEditCalendar}`,
@@ -412,7 +437,7 @@ export function editEvent(auth, screen, calendars, selectedEvent, events, allEve
 
       case 2:
         promptCalendarSelection(async (selectedEditCalendar, selectedEditCalendarId) => {
-          const initialValues = eventToFormValues(selectedEvent);
+          const initialValues = eventToFormValues(selectedEvent, fallbackDate);
 
           await prepareForm({
             label: `Edit Event - ${selectedEditCalendar}`,
@@ -455,6 +480,13 @@ export function editEvent(auth, screen, calendars, selectedEvent, events, allEve
 
       case 3:
         editCommandList.hide();
+        if (!selectedEvent || !selectedCalendarId || !selectedEventsId) {
+          logTable.log('Error: No event selected to delete.');
+          screen.render();
+          leftTable.focus();
+          screen.render();
+          return;
+        }
         calendar.events.delete(
           {
             calendarId: selectedCalendarId,
@@ -509,6 +541,9 @@ export function editEvent(auth, screen, calendars, selectedEvent, events, allEve
           const selectedEditCalendar = originEvent.calendarName;
           const selectedEditCalendarId = originEvent.calendarId;
           const initialValues = eventToFormValues(originEvent);
+          if (fallbackDateInfo?.date) {
+            initialValues.date = fallbackDateInfo.date;
+          }
 
           await prepareForm({
             label: `Edit Event - ${selectedEditCalendar}`,

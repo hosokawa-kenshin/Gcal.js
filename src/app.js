@@ -58,17 +58,10 @@ export async function runApp() {
   });
 
   leftTable.on('select', (item, index) => {
-    // displayItems構造を使用している場合、選択された行のeventを取得
-    if (leftTable.displayItems && leftTable.displayItems[index]) {
-      const selectedItem = leftTable.displayItems[index];
-      // eventがnullの場合は何もしない（イベントのない日）
-      if (selectedItem.event) {
-        editEvent(auth, screen, calendars, selectedItem.event, events, allEvents);
-      }
-    } else {
-      // 後方互換性のため、旧方式もサポート
-      editEvent(auth, screen, calendars, events[index], events, allEvents);
-    }
+    const selectedItem = leftTable.displayItems[index];
+    const selectedEvent = selectedItem.event || null;
+    const selectedDate = selectedItem.date || null;
+    editEvent(auth, screen, calendars, selectedEvent, events, allEvents, selectedDate);
   });
 
   setupKeyBindings(screen, auth, calendars, events, allEvents, inputBox, setting);
