@@ -3,11 +3,224 @@ import { updateTable, groupEventsByDate, formatGroupedEventsDescending } from '.
 import { splitDateTimeIntoDateAndTime, convertToDateTime } from '../utils/dateUtils.js';
 import { createAddForm } from '../ui/form.js';
 import { updateEventDetailTable } from '../ui/table.js';
+import { openExternalEditor } from '../utils/editor.js';
 import path from 'path';
 import os from 'os';
-import fs from 'fs';
 
-export function editEvent(auth, screen, calendars, index, events, allEvents) {
+const ENTER_HANDLER_KEY = Symbol('formBoxEnterHandler');
+const SAVE_HANDLER_KEY = Symbol('formBoxSaveHandler');
+
+function buildEditorContent(values, { includeAllDay = false } = {}) {
+  const {
+    title = '',
+    date = '',
+    startTime = '',
+    endTime = '',
+    description = '',
+    allDay = false,
+  } = values;
+
+  const lines = [
+    `Event Title | ${title}`,
+    `Date (YYYY-MM-DD) | ${date}`,
+    `Start Time (HH:mm) | ${startTime}`,
+    `End Time (HH:mm) | ${endTime}`,
+  ];
+
+  if (includeAllDay) {
+    lines.push(`All Day (y/n) | ${allDay ? 'y' : 'n'}`);
+  }
+
+  lines.push(`Description | ${description}`);
+
+  return `${lines.join('\n')}\n`;
+}
+
+function parseEditorContent(text, { includeAllDay = false } = {}) {
+  const details = {};
+
+  text.split('\n').forEach(line => {
+    const parts = line.split('|').map(part => part.trim());
+    if (parts.length === 2) {
+      const [label, value] = parts;
+      details[label] = value;
+    }
+  });
+
+  const parsed = {
+    title: details['Event Title'] || '',
+    date: details['Date (YYYY-MM-DD)'] || '',
+    startTime: details['Start Time (HH:mm)'] || '',
+    endTime: details['End Time (HH:mm)'] || '',
+    description: details['Description'] || '',
+  };
+
+  if (includeAllDay) {
+    parsed.allDay = (details['All Day (y/n)'] || 'n').toLowerCase() === 'y';
+  }
+
+  return parsed;
+}
+
+function applyDetailsToForm(formFields, details, { includeAllDay = false } = {}) {
+  formFields.title.setValue(details.title || '');
+  formFields.date.setValue(details.date || '');
+  formFields.startTime.setValue(details.startTime || '');
+  formFields.endTime.setValue(details.endTime || '');
+  formFields.description.setValue(details.description || '');
+
+  if (includeAllDay && formFields.all_day) {
+    if (details.allDay) {
+      formFields.all_day.check();
+    } else {
+      formFields.all_day.uncheck();
+    }
+  }
+}
+
+function collectFormValues(formFields, { includeAllDay = false } = {}) {
+  const values = {
+    title: formFields.title.getValue().trim(),
+    date: formFields.date.getValue().trim(),
+    startTime: formFields.startTime.getValue().trim(),
+    endTime: formFields.endTime.getValue().trim(),
+    description: formFields.description.getValue().trim(),
+  };
+
+  if (includeAllDay) {
+    values.allDay = !!formFields.all_day?.checked;
+  } else {
+    values.allDay = false;
+  }
+
+  return values;
+}
+
+function isAllDayEvent(event) {
+  return Boolean(event?.start?.date && !event?.start?.dateTime);
+}
+
+function formatDate(dateLike) {
+  if (!dateLike) {
+    return null;
+  }
+
+  const dateObj = new Date(dateLike);
+  if (Number.isNaN(dateObj.getTime())) {
+    return null;
+  }
+
+  return splitDateTimeIntoDateAndTime(dateObj);
+}
+
+function eventToFormValues(event, fallbackDate = null) {
+  const startInfo = formatDate(event?.start) || formatDate(fallbackDate);
+  const endInfo = formatDate(event?.end) || startInfo;
+
+  return {
+    title: event?.summary || '',
+    date: startInfo?.date || '',
+    startTime: event ? startInfo?.time || '' : '',
+    endTime: event ? endInfo?.time || '' : '',
+    description: event?.description || '',
+    allDay: event ? isAllDayEvent(event) : false,
+  };
+}
+
+function buildCalendarEventResource(values) {
+  const { title, description, date, startTime, endTime, allDay } = values;
+
+  if (allDay) {
+    return {
+      summary: title,
+      description,
+      start: { date },
+      end: { date },
+    };
+  }
+
+  return {
+    summary: title,
+    description,
+    start: {
+      dateTime: convertToDateTime(date, startTime).toISOString(),
+    },
+    end: {
+      dateTime: convertToDateTime(date, endTime).toISOString(),
+    },
+  };
+}
+
+function validateFormValues(values) {
+  return values.title && values.date && values.startTime && values.endTime;
+}
+
+function assignKeyHandler(element, keys, handler, storageKey) {
+  const existingHandler = element[storageKey];
+
+  if (existingHandler) {
+    if (typeof element.unkey === 'function') {
+      element.unkey(keys, existingHandler);
+    } else {
+      element.removeListener?.('keypress', existingHandler);
+    }
+  }
+
+  if (typeof element.key === 'function') {
+    element.key(keys, handler);
+  }
+
+  element[storageKey] = handler;
+}
+
+async function openEditorAndParse(screen, tempFilePath, values, options) {
+  const content = buildEditorContent(values, options);
+  const updatedText = await openExternalEditor(screen, tempFilePath, content);
+
+  if (!updatedText) {
+    return null;
+  }
+
+  return parseEditorContent(updatedText, options);
+}
+
+function setupEditorShortcut({ formBox, formFields, screen, tempFilePath, options }) {
+  const handler = async () => {
+    const currentValues = collectFormValues(formFields, options);
+    const updatedValues = await openEditorAndParse(screen, tempFilePath, currentValues, options);
+
+    if (updatedValues) {
+      applyDetailsToForm(formFields, updatedValues, options);
+      screen.render();
+    }
+  };
+
+  assignKeyHandler(formBox, ['enter'], handler, ENTER_HANDLER_KEY);
+}
+
+function setupSaveShortcut({ formBox, formFields, handler, options }) {
+  const wrappedHandler = async () => {
+    const values = collectFormValues(formFields, options);
+
+    try {
+      await handler(values);
+    } catch (err) {
+      console.error('Unexpected error while saving event:', err);
+    }
+  };
+
+  assignKeyHandler(formBox, ['C-s'], wrappedHandler, SAVE_HANDLER_KEY);
+}
+
+export function editEvent(
+  auth,
+  screen,
+  calendars,
+  selectedEvent,
+  events,
+  allEvents,
+  selectedDate = null
+) {
   const calendar = google.calendar({ version: 'v3', auth });
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
@@ -17,544 +230,282 @@ export function editEvent(auth, screen, calendars, index, events, allEvents) {
   const eventDetailTable = screen.children.find(child => child.options.label === 'Event Details');
   const { formBox, formFields } = createAddForm(screen);
   const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
-  const selectedEvent = events[index];
-  const selectedCalendarId = selectedEvent.calendarId;
-  const selectedEventsId = selectedEvent.id;
-  const { date: startDate, time: startTime } = splitDateTimeIntoDateAndTime(selectedEvent.start);
-  const { date: endDate, time: endTime } = splitDateTimeIntoDateAndTime(selectedEvent.end);
-  const calendarNames = Array.from(
-    new Set(calendars.map(calendar => calendar.summary))
-  );
-  const calendarIDs = Array.from(
-    new Set(calendars.map(calendar => calendar.id))
-  );
+  const selectedCalendarId = selectedEvent?.calendarId ?? null;
+  const selectedEventsId = selectedEvent?.id ?? null;
+  const fallbackDate = selectedEvent?.start || selectedDate || new Date();
+  const fallbackDateInfo = formatDate(fallbackDate);
+  const calendarNames = Array.from(new Set(calendars.map(calendar => calendar.summary)));
+  const calendarIDs = Array.from(new Set(calendars.map(calendar => calendar.id)));
 
   updateEventDetailTable(eventDetailTable, selectedEvent);
   eventDetailTable.show();
 
+  const showValidationError = () => {
+    logTable.log('Error: All fields must be filled in.');
+    screen.render();
+  };
+
+  const finalizeSuccess = async message => {
+    await updateTable(auth, leftTable, calendars, events, allEvents);
+    logTable.log(message);
+    if (!formBox.destroyed) {
+      formBox.destroy();
+    }
+    screen.render();
+    leftTable.focus();
+    screen.render();
+  };
+
+  async function prepareForm({
+    label,
+    initialValues,
+    includeAllDay = false,
+    openEditorImmediately = false,
+  }) {
+    formBox.setLabel(label);
+    applyDetailsToForm(formFields, initialValues, { includeAllDay });
+    formBox.show();
+    formBox.focus();
+    screen.render();
+
+    setupEditorShortcut({
+      formBox,
+      formFields,
+      screen,
+      tempFilePath,
+      options: { includeAllDay },
+    });
+
+    if (openEditorImmediately) {
+      const updatedValues = await openEditorAndParse(screen, tempFilePath, initialValues, {
+        includeAllDay,
+      });
+
+      if (updatedValues) {
+        applyDetailsToForm(formFields, updatedValues, { includeAllDay });
+        screen.render();
+      }
+    }
+  }
+
   editCommandList.show();
   screen.render();
   editCommandList.focus();
-  editCommandList.once('select', (item, index) => {
+  editCommandList.once('select', async (item, index) => {
     eventDetailTable.hide();
-    switch (index) {
 
-      case 0:
-        editCommandList.hide();
-        calendarList.show();
-        calendarList.focus();
+    const promptCalendarSelection = handler => {
+      editCommandList.hide();
+      calendarList.show();
+      calendarList.focus();
+      screen.render();
+
+      calendarList.once('select', async (calendarItem, calendarIndex) => {
+        const selectedEditCalendar = calendarNames[calendarIndex];
+        const selectedEditCalendarId = calendarIDs[calendarIndex];
+
+        calendarList.hide();
         screen.render();
-        calendarList.once('select', (item, index) => {
-          const selectedEditCalendar = calendarNames[index];
-          const selectedEditCalendarId = calendarIDs[index];
-          calendarList.hide();
-          formBox.setLabel(`Edit Event - ${selectedEditCalendar}  (Ctrl+S to save)`);
-          formBox.show();
-          formBox.focus();
+
+        if (!selectedEditCalendar || !selectedEditCalendarId) {
+          logTable.log('Error: Invalid calendar selection.');
           screen.render();
-
-          const originEvent = selectedEvent;
-          formBox.setLabel(`Edit Event - ${selectedEditCalendar}  (Ctrl+S to save)`);
-          formBox.show();
-          formBox.focus();
+          editCommandList.show();
+          editCommandList.focus();
           screen.render();
-          const { date: sDate, time: sTime } = splitDateTimeIntoDateAndTime(originEvent.start);
-          const { date: eDate, time: eTime } = splitDateTimeIntoDateAndTime(originEvent.end);
+          return;
+        }
 
-          const eventContent = `Event Title | 
-Date (YYYY-MM-DD) | ${startDate}
-Start Time (HH:mm) | ${sTime}
-End Time (HH:mm) |  ${eTime}
-All Day (y/n)| n
-Description | 
-`;
+        await handler(selectedEditCalendar, selectedEditCalendarId);
+      });
+    };
 
-          fs.writeFileSync(tempFilePath, eventContent, 'utf8');
-          const editor = process.env.EDITOR || 'vim';
-          screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-            if (err) {
-              console.error('Error opening editor:', err);
-              return;
-            }
-            if (code !== true) {
-              console.log(`Editor exited with code: ${code}`);
-              return;
-            }
-            const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-            const extractDetails = (text) => {
-              const lines = text.split('\n');
-              const details = {};
-              lines.forEach(line => {
-                const parts = line.split('|').map(part => part.trim());
-                if (parts.length === 2) {
-                  const [label, value] = parts;
-                  details[label] = value;
-                }
-              });
-              return details;
-            };
+    switch (index) {
+      case 0:
+        promptCalendarSelection(async (selectedEditCalendar, selectedEditCalendarId) => {
+          const baseValues = eventToFormValues(selectedEvent, fallbackDate);
+          const initialValues = {
+            ...baseValues,
+            title: '',
+            description: '',
+            allDay: false,
+          };
 
-            const extractedDetails = extractDetails(updatedText);
-            var allDay = extractedDetails['All Day (y/n)'] === 'y' ? true : false;
-
-            formFields.title.setValue(extractedDetails['Event Title']);
-            formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
-            formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
-            formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
-            formFields.description.setValue(extractedDetails['Description']);
-            allDay ? formFields.all_day.check() : formFields.all_day.uncheck();
-
-            screen.render();
-            fs.unlinkSync(tempFilePath);
+          await prepareForm({
+            label: `Edit Event - ${selectedEditCalendar}  (Ctrl+S to save)`,
+            initialValues,
+            includeAllDay: true,
+            openEditorImmediately: true,
           });
-          formBox.key(['enter'], () => {
-            var title = formFields.title.getValue().trim();
-            var date = formFields.date.getValue().trim();
-            var startTime = formFields.startTime.getValue().trim();
-            var endTime = formFields.endTime.getValue().trim();
-            var allDay = formFields.all_day.checked;
-            var description = formFields.description.getValue().trim();
 
-            const eventContent = `Event Title | ${title}
-      Date (YYYY-MM-DD) | ${date}
-      Start Time (HH:mm) | ${startTime}
-      End Time (HH:mm) |  ${endTime}
-      All Day (y/n)| ${allDay ? 'y' : 'n'}
-      Description | ${description}
-      `;
-            fs.writeFileSync(tempFilePath, eventContent, 'utf8');
-            const editor = process.env.EDITOR || 'vim';
-            screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-              if (err) {
-                console.error('Error opening editor:', err);
+          setupSaveShortcut({
+            formBox,
+            formFields,
+            options: { includeAllDay: true },
+            handler: async values => {
+              if (!validateFormValues(values)) {
+                showValidationError();
                 return;
               }
-              if (code !== true) {
-                console.log(`Editor exited with code: ${code}`);
-                return;
-              }
-              const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-              const extractDetails = (text) => {
-                const lines = text.split('\n');
-                const details = {};
-                lines.forEach(line => {
-                  const parts = line.split('|').map(part => part.trim());
-                  if (parts.length === 2) {
-                    const [label, value] = parts;
-                    details[label] = value;
+
+              const eventResource = buildCalendarEventResource(values);
+
+              calendar.events.insert(
+                {
+                  calendarId: selectedEditCalendarId,
+                  resource: eventResource,
+                },
+                async err => {
+                  if (err) {
+                    console.error('The API returned an error: ' + err);
+                    logTable.log('Error: Failed to register event.');
+                    screen.render();
+                    return;
                   }
-                });
-                return details;
-              };
 
-              const extractedDetails = extractDetails(updatedText);
-              title = extractedDetails['Event Title'];
-              date = extractedDetails['Date (YYYY-MM-DD)'];
-              startTime = extractedDetails['Start Time (HH:mm)'];
-              endTime = extractedDetails['End Time (HH:mm)'];
-              description = extractedDetails['Description'];
-              allDay = extractedDetails['All Day (y/n)'] === 'y' ? true : false;
-
-              formFields.title.setValue(title);
-              formFields.date.setValue(date);
-              formFields.startTime.setValue(startTime);
-              formFields.endTime.setValue(endTime);
-              formFields.description.setValue(description);
-              allDay ? formFields.all_day.check() : formFields.all_day.uncheck();
-
-              screen.render();
-              fs.unlinkSync(tempFilePath);
-            });
-          });
-
-          formBox.key(['C-s'], () => {
-            const title = formFields.title.getValue().trim();
-            const date = formFields.date.getValue().trim();
-            const startTime = formFields.startTime.getValue().trim();
-            const endTime = formFields.endTime.getValue().trim();
-            const description = formFields.description.getValue().trim();
-            const allDay = formFields.all_day.checked;
-
-            formBox.hide();
-
-            if (!title || !date || !startTime || !endTime) {
-              logTable.log('Error: All fields must be filled in.');
-              screen.render();
-              return;
-            }
-
-            var event = null;
-
-            if (allDay) {
-              event ={
-                summary: title,
-                description: description,
-                start: {
-                  date: date,
-                },
-                end: {
-                  date: date,
+                  await finalizeSuccess('Event successfully registered!');
                 }
-              }
-            } else {
-              event = {
-                summary: title,
-                description: description,
-                start: {
-                  dateTime: convertToDateTime(date, startTime).toISOString(),
-                },
-                end: {
-                  dateTime: convertToDateTime(date, endTime).toISOString(),
-                },
-              };
-            }
-
-            calendar.events.insert({
-              calendarId: selectedEditCalendarId,
-              resource: event,
-            }, async (err, res) => {
-              if (err) return console.error('The API returned an error: ' + err);
-              await updateTable(auth, leftTable, calendars, events, allEvents);
-              logTable.log('Event successfully registered!');
-              formBox.destroy();
-              screen.render();
-              leftTable.focus();
-              screen.render();
-            });
+              );
+            },
           });
         });
         break;
 
       case 1:
-        editCommandList.hide();
-        calendarList.show();
-        calendarList.focus();
-        screen.render();
-        calendarList.once('select', (item, index) => {
-          const selectedEditCalendar = calendarNames[index];
-          const selectedEditCalendarId = calendarIDs[index];
-          calendarList.hide();
-          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
-          formBox.show();
-          formBox.focus();
-          const eventContent = `Event Title | ${selectedEvent.summary}
-Date (YYYY-MM-DD) | ${startDate}
-Start Time (HH:mm) | ${startTime}
-End Time (HH:mm) |  ${endTime}
-Description | ${selectedEvent.description || ''}
-`;
-          fs.writeFileSync(tempFilePath, eventContent, 'utf8');
-          const editor = process.env.EDITOR || 'vim';
-          screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-            if (err) {
-              console.error('Error opening editor:', err);
-              return;
-            }
-            if (code !== true) {
-              console.log(`Editor exited with code: ${code}`);
-              return;
-            }
-            const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-            const extractDetails = (text) => {
-              const lines = text.split('\n');
-              const details = {};
-              lines.forEach(line => {
-                const parts = line.split('|').map(part => part.trim());
-                if (parts.length === 2) {
-                  const [label, value] = parts;
-                  details[label] = value;
-                }
-              });
-              return details;
-            };
-
-            const extractedDetails = extractDetails(updatedText);
-
-            formFields.title.setValue(extractedDetails['Event Title']);
-            formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
-            formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
-            formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
-            formFields.description.setValue(extractedDetails['Description']);
-
+        promptCalendarSelection(async (selectedEditCalendar, selectedEditCalendarId) => {
+          if (!selectedEvent || !selectedCalendarId || !selectedEventsId) {
+            logTable.log('Error: No event selected to move.');
             screen.render();
-            fs.unlinkSync(tempFilePath);
-            screen.render();
-            formBox.key(['enter'], () => {
-              var title = formFields.title.getValue().trim();
-              var date = formFields.date.getValue().trim();
-              var startTime = formFields.startTime.getValue().trim();
-              var endTime = formFields.endTime.getValue().trim();
-              var description = formFields.description.getValue().trim();
-              const eventContent = `Event Title | ${title}
-Date (YYYY-MM-DD) | ${date}
-Start Time (HH:mm) | ${startTime}
-End Time (HH:mm) |  ${endTime}
-Description | ${description}
-`;
-              fs.writeFileSync(tempFilePath, eventContent, 'utf8');
-              const editor = process.env.EDITOR || 'vim';
-              screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-                if (err) {
-                  console.error('Error opening editor:', err);
-                  return;
-                }
-                if (code !== true) {
-                  console.log(`Editor exited with code: ${code}`);
-                  return;
-                }
-                const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-                const extractDetails = (text) => {
-                  const lines = text.split('\n');
-                  const details = {};
-                  lines.forEach(line => {
-                    const parts = line.split('|').map(part => part.trim());
-                    if (parts.length === 2) {
-                      const [label, value] = parts;
-                      details[label] = value;
-                    }
-                  });
-                  return details;
-                };
+            return;
+          }
 
-                const extractedDetails = extractDetails(updatedText);
-                title = extractedDetails['Event Title'];
-                date = extractedDetails['Date (YYYY-MM-DD)'];
-                startTime = extractedDetails['Start Time (HH:mm)'];
-                endTime = extractedDetails['End Time (HH:mm)'];
-                description = extractedDetails['Description'];
+          const initialValues = eventToFormValues(selectedEvent, fallbackDate);
 
-                formFields.title.setValue(title);
-                formFields.date.setValue(date);
-                formFields.startTime.setValue(startTime);
-                formFields.endTime.setValue(endTime);
-                formFields.description.setValue(description);
-
-                screen.render();
-                fs.unlinkSync(tempFilePath);
-              });
-            });
+          await prepareForm({
+            label: `Edit Event - ${selectedEditCalendar}`,
+            initialValues,
+            openEditorImmediately: true,
           });
 
-          formBox.key(['C-s'], () => {
-            const title = formFields.title.getValue().trim();
-            const date = formFields.date.getValue().trim();
-            const startTime = formFields.startTime.getValue().trim();
-            const endTime = formFields.endTime.getValue().trim();
-            const description = formFields.description.getValue().trim();
-
-            formBox.hide();
-
-            if (!title || !date || !startTime || !endTime) {
-              logTable.log('Error: All fields must be filled in.');
-              screen.render();
-              return;
-            }
-
-            calendar.events.delete(
-              {
-                calendarId: selectedCalendarId,
-                eventId: selectedEventsId,
-              }
-            );
-
-            const event = {
-              summary: title,
-              description: description,
-              start: {
-                dateTime: convertToDateTime(date, startTime).toISOString(),
-              },
-              end: {
-                dateTime: convertToDateTime(date, endTime).toISOString(),
-              },
-            };
-
-            calendar.events.insert({
-              calendarId: selectedEditCalendarId,
-              resource: event,
-            }, async (err, res) => {
-              if (err) return console.error('The API returned an error: ' + err);
-              await updateTable(auth, leftTable, calendars, events, allEvents);
-              logTable.log('Event successfully moved!');
-              formBox.destroy();
-              screen.render();
-              leftTable.focus();
-              screen.render();
-            });
-          });
-
-        }
-        );
-        break;
-
-      case 2:
-        editCommandList.hide();
-        calendarList.show();
-        calendarList.focus();
-        screen.render();
-        calendarList.once('select', (item, index) => {
-          const selectedEditCalendar = calendarNames[index];
-          const selectedEditCalendarId = calendarIDs[index];
-          calendarList.hide();
-          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
-          formBox.show();
-          formBox.focus();
-          screen.render();
-          const eventContent = `Event Title | ${selectedEvent.summary}
-Date (YYYY-MM-DD) | ${startDate}
-Start Time (HH:mm) | ${startTime}
-End Time (HH:mm) |  ${endTime}
-Description | ${selectedEvent.description || ''}
-`;
-          fs.writeFileSync(tempFilePath, eventContent, 'utf8');
-          const editor = process.env.EDITOR || 'vim';
-          screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-            if (err) {
-              console.error('Error opening editor:', err);
-              return;
-            }
-            if (code !== true) {
-              console.log(`Editor exited with code: ${code}`);
-              return;
-            }
-            const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-            const extractDetails = (text) => {
-              const lines = text.split('\n');
-              const details = {};
-              lines.forEach(line => {
-                const parts = line.split('|').map(part => part.trim());
-                if (parts.length === 2) {
-                  const [label, value] = parts;
-                  details[label] = value;
-                }
-              });
-              return details;
-            };
-
-            const extractedDetails = extractDetails(updatedText);
-
-            formFields.title.setValue(extractedDetails['Event Title']);
-            formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
-            formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
-            formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
-            formFields.description.setValue(extractedDetails['Description']);
-
-            screen.render();
-            fs.unlinkSync(tempFilePath);
-          });
-          formBox.key(['enter'], () => {
-            var title = formFields.title.getValue().trim();
-            var date = formFields.date.getValue().trim();
-            var startTime = formFields.startTime.getValue().trim();
-            var endTime = formFields.endTime.getValue().trim();
-            const eventContent = `Event Title | ${title}
-Date (YYYY-MM-DD) | ${date}
-Start Time (HH:mm) | ${startTime}
-End Time (HH:mm) |  ${endTime}
-Description | ${formFields.description.getValue().trim()}
-`;
-            fs.writeFileSync(tempFilePath, eventContent, 'utf8');
-            const editor = process.env.EDITOR || 'vim';
-            screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-              if (err) {
-                console.error('Error opening editor:', err);
+          setupSaveShortcut({
+            formBox,
+            formFields,
+            options: {},
+            handler: async values => {
+              if (!validateFormValues(values)) {
+                showValidationError();
                 return;
               }
-              if (code !== true) {
-                console.log(`Editor exited with code: ${code}`);
-                return;
-              }
-              const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-              const extractDetails = (text) => {
-                const lines = text.split('\n');
-                const details = {};
-                lines.forEach(line => {
-                  const parts = line.split('|').map(part => part.trim());
-                  if (parts.length === 2) {
-                    const [label, value] = parts;
-                    details[label] = value;
+
+              const eventResource = buildCalendarEventResource(values);
+
+              calendar.events.delete(
+                {
+                  calendarId: selectedCalendarId,
+                  eventId: selectedEventsId,
+                },
+                err => {
+                  if (err) {
+                    console.error('The API returned an error: ' + err);
+                    logTable.log('Error: Failed to delete original event.');
+                    screen.render();
+                    return;
                   }
-                });
-                return details;
-              };
 
-              const extractedDetails = extractDetails(updatedText);
-              title = extractedDetails['Event Title'];
-              date = extractedDetails['Date (YYYY-MM-DD)'];
-              startTime = extractedDetails['Start Time (HH:mm)'];
-              endTime = extractedDetails['End Time (HH:mm)'];
-              description = extractedDetails['Description'];
+                  calendar.events.insert(
+                    {
+                      calendarId: selectedEditCalendarId,
+                      resource: eventResource,
+                    },
+                    async insertErr => {
+                      if (insertErr) {
+                        console.error('The API returned an error: ' + insertErr);
+                        logTable.log('Error: Failed to move event.');
+                        screen.render();
+                        return;
+                      }
 
-              formFields.title.setValue(title);
-              formFields.date.setValue(date);
-              formFields.startTime.setValue(startTime);
-              formFields.endTime.setValue(endTime);
-              formFields.description.setValue(description);
-
-              screen.render();
-              fs.unlinkSync(tempFilePath);
-            });
-          });
-
-          formBox.key(['C-s'], () => {
-            const title = formFields.title.getValue().trim();
-            const date = formFields.date.getValue().trim();
-            const startTime = formFields.startTime.getValue().trim();
-            const endTime = formFields.endTime.getValue().trim();
-            const description = formFields.description.getValue().trim();
-
-            formBox.hide();
-
-            if (!title || !date || !startTime || !endTime) {
-              logTable.log('Error: All fields must be filled in.');
-              screen.render();
-              return;
-            }
-
-            const event = {
-              summary: title,
-              description: description,
-              start: {
-                dateTime: convertToDateTime(date, startTime).toISOString(),
-              },
-              end: {
-                dateTime: convertToDateTime(date, endTime).toISOString(),
-              },
-            };
-
-            calendar.events.insert({
-              calendarId: selectedEditCalendarId,
-              resource: event,
-            }, async (err, res) => {
-              if (err) return console.error('The API returned an error: ' + err);
-              await updateTable(auth, leftTable, calendars, events, allEvents);
-              logTable.log('Event successfully registered!');
-              formBox.destroy();
-              screen.render();
-              leftTable.focus();
-              screen.render();
-            });
+                      await finalizeSuccess('Event successfully moved!');
+                    }
+                  );
+                }
+              );
+            },
           });
         });
         break;
+
+      case 2:
+        promptCalendarSelection(async (selectedEditCalendar, selectedEditCalendarId) => {
+          const initialValues = eventToFormValues(selectedEvent, fallbackDate);
+
+          await prepareForm({
+            label: `Edit Event - ${selectedEditCalendar}`,
+            initialValues,
+            openEditorImmediately: true,
+          });
+
+          setupSaveShortcut({
+            formBox,
+            formFields,
+            options: {},
+            handler: async values => {
+              if (!validateFormValues(values)) {
+                showValidationError();
+                return;
+              }
+
+              const eventResource = buildCalendarEventResource(values);
+
+              calendar.events.insert(
+                {
+                  calendarId: selectedEditCalendarId,
+                  resource: eventResource,
+                },
+                async err => {
+                  if (err) {
+                    console.error('The API returned an error: ' + err);
+                    logTable.log('Error: Failed to register event.');
+                    screen.render();
+                    return;
+                  }
+
+                  await finalizeSuccess('Event successfully registered!');
+                }
+              );
+            },
+          });
+        });
+        break;
+
       case 3:
+        editCommandList.hide();
+        if (!selectedEvent || !selectedCalendarId || !selectedEventsId) {
+          logTable.log('Error: No event selected to delete.');
+          screen.render();
+          leftTable.focus();
+          screen.render();
+          return;
+        }
         calendar.events.delete(
           {
             calendarId: selectedCalendarId,
             eventId: selectedEventsId,
           },
-          async (err, res) => {
+          async err => {
             if (err) {
               console.error('The API returned an error: ' + err);
+              logTable.log('Error: Failed to delete event.');
+              screen.render();
               return;
             }
-            await updateTable(auth, leftTable, calendars, events, allEvents);
-            logTable.log('Event successfully deleted!');
-            editCommandList.hide();
-            screen.render();
+
+            await finalizeSuccess('Event successfully deleted!');
           }
         );
         break;
-      case 4:
+
+      case 4: {
         screen.append(eventTable);
         eventTable.show();
         editCommandList.hide();
@@ -564,6 +515,7 @@ Description | ${formFields.description.getValue().trim()}
 
         eventTable.focus();
         screen.render();
+
         const now = new Date();
         now.setHours(23, 59, 59, 99);
         const groupedEvents = groupEventsByDate(events);
@@ -574,164 +526,65 @@ Description | ${formFields.description.getValue().trim()}
           })
           .sort(([dateA], [dateB]) => new Date(dateB) - new Date(dateA));
 
-        function extractEvents(array) {
-          return array.flatMap(([_, events]) => events.flat());
-        }
+        const descSortedEvents = filteredGroupedEvents.flatMap(([, list]) => list.flat());
 
-        const descSortedEvents = extractEvents(filteredGroupedEvents);
-
-        eventTable.once('select', (item, index) => {
-
+        eventTable.once('select', async (tableItem, eventIndex) => {
           eventTable.hide();
-          const originEvent = descSortedEvents[index];
+          const originEvent = descSortedEvents[eventIndex];
+
+          if (!originEvent) {
+            logTable.log('Error: Selected event could not be found.');
+            screen.render();
+            return;
+          }
+
           const selectedEditCalendar = originEvent.calendarName;
           const selectedEditCalendarId = originEvent.calendarId;
+          const initialValues = eventToFormValues(originEvent);
+          if (fallbackDateInfo?.date) {
+            initialValues.date = fallbackDateInfo.date;
+          }
 
-          formBox.setLabel(`Edit Event - ${selectedEditCalendar}`);
-          formBox.show();
-          formBox.focus();
-          screen.render();
-          const { date: sDate, time: sTime } = splitDateTimeIntoDateAndTime(originEvent.start);
-          const { date: eDate, time: eTime } = splitDateTimeIntoDateAndTime(originEvent.end);
-
-          const eventContent = `Event Title | ${originEvent.summary}
-Date (YYYY-MM-DD) | ${startDate}
-Start Time (HH:mm) | ${sTime}
-End Time (HH:mm) |  ${eTime}
-Description | ${originEvent.description || ''}
-`;
-
-          fs.writeFileSync(tempFilePath, eventContent, 'utf8');
-          const editor = process.env.EDITOR || 'vim';
-          screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-            if (err) {
-              console.error('Error opening editor:', err);
-              return;
-            }
-            if (code !== true) {
-              console.log(`Editor exited with code: ${code}`);
-              return;
-            }
-            const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-            const extractDetails = (text) => {
-              const lines = text.split('\n');
-              const details = {};
-              lines.forEach(line => {
-                const parts = line.split('|').map(part => part.trim());
-                if (parts.length === 2) {
-                  const [label, value] = parts;
-                  details[label] = value;
-                }
-              });
-              return details;
-            };
-
-            const extractedDetails = extractDetails(updatedText);
-
-            formFields.title.setValue(extractedDetails['Event Title']);
-            formFields.date.setValue(extractedDetails['Date (YYYY-MM-DD)']);
-            formFields.startTime.setValue(extractedDetails['Start Time (HH:mm)']);
-            formFields.endTime.setValue(extractedDetails['End Time (HH:mm)']);
-            formFields.description.setValue(extractedDetails['Description']);
-
-            screen.render();
-            fs.unlinkSync(tempFilePath);
+          await prepareForm({
+            label: `Edit Event - ${selectedEditCalendar}`,
+            initialValues,
+            openEditorImmediately: true,
           });
-          formBox.key(['enter'], () => {
-            var title = formFields.title.getValue().trim();
-            var date = formFields.date.getValue().trim();
-            var startTime = formFields.startTime.getValue().trim();
-            var endTime = formFields.endTime.getValue().trim();
-            const eventContent = `Event Title | ${title}
-Date (YYYY-MM-DD) | ${date}
-Start Time (HH:mm) | ${startTime}
-End Time (HH:mm) |  ${endTime}
-Description | ${formFields.description.getValue().trim()}
-`;
-            fs.writeFileSync(tempFilePath, eventContent, 'utf8');
-            const editor = process.env.EDITOR || 'vim';
-            screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
-              if (err) {
-                console.error('Error opening editor:', err);
+
+          setupSaveShortcut({
+            formBox,
+            formFields,
+            options: {},
+            handler: async values => {
+              if (!validateFormValues(values)) {
+                showValidationError();
                 return;
               }
-              if (code !== true) {
-                console.log(`Editor exited with code: ${code}`);
-                return;
-              }
-              const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-              const extractDetails = (text) => {
-                const lines = text.split('\n');
-                const details = {};
-                lines.forEach(line => {
-                  const parts = line.split('|').map(part => part.trim());
-                  if (parts.length === 2) {
-                    const [label, value] = parts;
-                    details[label] = value;
+
+              const eventResource = buildCalendarEventResource(values);
+
+              calendar.events.insert(
+                {
+                  calendarId: selectedEditCalendarId,
+                  resource: eventResource,
+                },
+                async err => {
+                  if (err) {
+                    console.error('The API returned an error: ' + err);
+                    logTable.log('Error: Failed to register event.');
+                    screen.render();
+                    return;
                   }
-                });
-                return details;
-              };
 
-              const extractedDetails = extractDetails(updatedText);
-              title = extractedDetails['Event Title'];
-              date = extractedDetails['Date (YYYY-MM-DD)'];
-              startTime = extractedDetails['Start Time (HH:mm)'];
-              endTime = extractedDetails['End Time (HH:mm)'];
-              description = extractedDetails['Description'];
-
-              formFields.title.setValue(title);
-              formFields.date.setValue(date);
-              formFields.startTime.setValue(startTime);
-              formFields.endTime.setValue(endTime);
-              formFields.description.setValue(description);
-
-              screen.render();
-              fs.unlinkSync(tempFilePath);
-            });
-          });
-
-          formBox.key(['C-s'], () => {
-            const title = formFields.title.getValue().trim();
-            const date = formFields.date.getValue().trim();
-            const startTime = formFields.startTime.getValue().trim();
-            const endTime = formFields.endTime.getValue().trim();
-            const description = formFields.description.getValue().trim();
-
-            formBox.hide();
-
-            if (!title || !date || !startTime || !endTime) {
-              logTable.log('Error: All fields must be filled in.');
-              screen.render();
-              return;
-            }
-
-            const event = {
-              summary: title,
-              description: description,
-              start: {
-                dateTime: convertToDateTime(date, startTime).toISOString(),
-              },
-              end: {
-                dateTime: convertToDateTime(date, endTime).toISOString(),
-              },
-            };
-
-            calendar.events.insert({
-              calendarId: selectedEditCalendarId,
-              resource: event,
-            }, async (err, res) => {
-              if (err) return console.error('The API returned an error: ' + err);
-              await updateTable(auth, leftTable, calendars, events, allEvents);
-              logTable.log('Event successfully registered!');
-              formBox.destroy();
-              screen.render();
-              leftTable.focus();
-              screen.render();
-            });
+                  await finalizeSuccess('Event successfully registered!');
+                }
+              );
+            },
           });
         });
         break;
+      }
+
       default:
         break;
     }

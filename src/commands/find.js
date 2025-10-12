@@ -1,6 +1,8 @@
-import blessed from 'blessed';
-import contrib from 'blessed-contrib';
-import { searchIndexOfToday, formatGroupedEvents } from '../ui/layout.js';
+import {
+  createDisplayItemsForEvents,
+  formatDisplayItems,
+  searchDisplayItemIndex,
+} from '../ui/layout.js';
 import { isSameDate } from '../utils/dateUtils.js';
 
 export function findCommand(screen, events, allEvents, args, keypressListener) {
@@ -59,10 +61,16 @@ export function findCommand(screen, events, allEvents, args, keypressListener) {
   } else {
     events.length = 0;
     events.push(...filteredEvents);
-    const formattedEvents = formatGroupedEvents(events);
+
+    const displayItems = createDisplayItemsForEvents(filteredEvents);
+    const formattedEvents = formatDisplayItems(displayItems);
+    leftTable.displayItems = displayItems;
     leftTable.setItems(formattedEvents);
-    leftTable.select(searchIndexOfToday(events));
-    leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
+
+    const closestIndex = searchDisplayItemIndex(new Date(), displayItems);
+
+    leftTable.select(closestIndex);
+    leftTable.scrollTo(Math.max(0, closestIndex - Math.floor(leftTable.height / 2)));
     leftTable.off('keypress', keypressListener);
     logTable.log(`Filtered events by: ${args.join(' ')}`);
     screen.render();
