@@ -1,10 +1,7 @@
-import blessed from 'blessed';
-import contrib from 'blessed-contrib';
 import {
-  createDisplayItems,
+  createDisplayItemsForEvents,
   formatDisplayItems,
-  searchDisplayItemIndexOfToday,
-  formatGroupedEvents,
+  searchDisplayItemIndex,
 } from '../ui/layout.js';
 import { isSameDate } from '../utils/dateUtils.js';
 
@@ -65,13 +62,15 @@ export function findCommand(screen, events, allEvents, args, keypressListener) {
     events.length = 0;
     events.push(...filteredEvents);
 
-    // 新しいdisplayItems構造を使用
-    const displayItems = createDisplayItems(events, new Date());
+    const displayItems = createDisplayItemsForEvents(filteredEvents);
     const formattedEvents = formatDisplayItems(displayItems);
-    leftTable.displayItems = displayItems; // テーブルにdisplayItemsを保持
+    leftTable.displayItems = displayItems;
     leftTable.setItems(formattedEvents);
-    leftTable.select(searchDisplayItemIndexOfToday(displayItems));
-    leftTable.scrollTo(leftTable.selected + leftTable.height - 3);
+
+    const closestIndex = searchDisplayItemIndex(new Date(), displayItems);
+
+    leftTable.select(closestIndex);
+    leftTable.scrollTo(Math.max(0, closestIndex - Math.floor(leftTable.height / 2)));
     leftTable.off('keypress', keypressListener);
     logTable.log(`Filtered events by: ${args.join(' ')}`);
     screen.render();
