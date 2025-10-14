@@ -4,7 +4,16 @@ import fs2 from 'fs';
 import path from 'path';
 import { authenticate } from '@google-cloud/local-auth';
 import { google } from 'googleapis';
-import { insertCalendarListToDatabase, fetchCalendarsFromDatabase, setSyncTokenInDatabase, ensureSyncTokenColumn, ensureDescriptionColumn, deleteEventsFromDatabase, insertEventsToDatabase, fetchEventsFromDatabase } from './databaseService.js';
+import {
+  insertCalendarListToDatabase,
+  fetchCalendarsFromDatabase,
+  setSyncTokenInDatabase,
+  ensureSyncTokenColumn,
+  ensureDescriptionColumn,
+  deleteEventsFromDatabase,
+  insertEventsToDatabase,
+  fetchEventsFromDatabase,
+} from './databaseService.js';
 import { convertToDateTime } from '../utils/dateUtils.js';
 
 // If modifying these scopes, delete token.json.
@@ -69,10 +78,10 @@ export async function authorize() {
 }
 
 /**
-  * Fetch all calendar which the user can access to.
-  *
-  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
-  */
+ * Fetch all calendar which the user can access to.
+ *
+ * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
+ */
 export async function fetchCalendars(auth) {
   const calendar = google.calendar({ version: 'v3', auth });
   const res = await calendar.calendarList.list();
@@ -81,14 +90,14 @@ export async function fetchCalendars(auth) {
 }
 
 /**
-  * Lists events on specified calendars within a given date range.
-  *
-  * @param {google.calendar_v3.Calendar} client The google API client.
-  * @param {Date} startTime The start date of fetching events.
-  * @param {Date} endtime The end date of fetching events.
-  * @param {Object} calendar The set of calendar ID and summary.
-  * @return {Promise<Array[Event]>} List of events.
-  */
+ * Lists events on specified calendars within a given date range.
+ *
+ * @param {google.calendar_v3.Calendar} client The google API client.
+ * @param {Date} startTime The start date of fetching events.
+ * @param {Date} endtime The end date of fetching events.
+ * @param {Object} calendar The set of calendar ID and summary.
+ * @return {Promise<Array[Event]>} List of events.
+ */
 export async function fetchEventFromCalendar(client, calendar) {
   const params = {
     calendarId: calendar.id,
@@ -109,7 +118,6 @@ export async function fetchEventFromCalendar(client, calendar) {
       const validEvents = events.filter(event => event.status === 'confirmed');
       return validEvents.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
     }
-    await setSyncTokenInDatabase(calendar);
     return events.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
   } catch (err) {
     if (err.code === 410) {
@@ -119,22 +127,26 @@ export async function fetchEventFromCalendar(client, calendar) {
         maxResults: 2500,
       };
       const allRes = await client.events.list(allRequestParams);
-      await setSyncTokenInDatabase(calendar);
+      if (allRes.data.nextSyncToken) {
+        calendar.syncToken = allRes.data.nextSyncToken;
+        await setSyncTokenInDatabase(calendar);
+      }
       const allEvents = allRes.data.items;
       return allEvents.map(event => Event.fromGAPIEvent(event, calendar.id, calendar.summary));
     }
+    console.error('The API returned an error: ' + err);
   }
 }
 
 /**
-  * Lists events on specified calendars within a given date range.
-  *
-  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
-  * @param {Array<String>?} calendarIDs IDs of calendars to fetch events. If not specified, fetch events from all calendars.
-  * @param {Date} startTime The start date of fetching events.
-  * @param {Date} endtime The end date of fetching events.
-  * @return {Promise<Array[Event]>} List of events.
-  */
+ * Lists events on specified calendars within a given date range.
+ *
+ * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
+ * @param {Array<String>?} calendarIDs IDs of calendars to fetch events. If not specified, fetch events from all calendars.
+ * @param {Date} startTime The start date of fetching events.
+ * @param {Date} endtime The end date of fetching events.
+ * @return {Promise<Array[Event]>} List of events.
+ */
 export async function fetchEvents(auth, calendars) {
   const client = google.calendar({ version: 'v3', auth });
   let tasks = [];
@@ -148,10 +160,10 @@ export async function fetchEvents(auth, calendars) {
 }
 
 export async function initializeCalendars(auth) {
-  const dbPath = "./db/Gcal.db";
+  const dbPath = './db/Gcal.db';
   var calendars = [];
   if (!fs2.existsSync(dbPath)) {
-    console.log("Database file does not exist. Creating a new database...");
+    console.log('Database file does not exist. Creating a new database...');
     calendars = await fetchCalendars(auth);
     await insertCalendarListToDatabase(calendars);
     calendars = await fetchCalendarsFromDatabase();
@@ -163,7 +175,7 @@ export async function initializeCalendars(auth) {
 }
 
 export async function initializeEvents(auth, calendars) {
-  console.log("Fetching events...");
+  console.log('Fetching events...');
   const rawEvents = await fetchEvents(auth, calendars);
   await insertEventsToDatabase(rawEvents);
   const events = await fetchEventsFromDatabase(calendars);
@@ -172,6 +184,8 @@ export async function initializeEvents(auth, calendars) {
 
 export async function fetchSelectedEventsFromDatabase(calendars, startDate, endDate) {
   const events = await fetchEventsFromDatabase(calendars);
-  const selectedEvents = events.filter(event => event.start >= convertToDateTime(startDate) && event.end <= convertToDateTime(endDate));
+  const selectedEvents = events.filter(
+    event => event.start >= convertToDateTime(startDate) && event.end <= convertToDateTime(endDate)
+  );
   return selectedEvents;
 }
