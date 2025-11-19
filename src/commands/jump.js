@@ -1,5 +1,5 @@
-import { convertToDateTime } from "../utils/dateUtils.js";
-import { updateEventsAndUI } from "../ui/layout.js";
+import { convertToDateTime } from '../utils/dateUtils.js';
+import { updateEventsAndUI } from '../ui/layout.js';
 
 export function jumpCommand(screen, events, allEvents, args) {
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
@@ -13,7 +13,17 @@ export function jumpCommand(screen, events, allEvents, args) {
 
   if (args.length === 0) {
     targetDate = new Date();
-    updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, 'Jumped to today');
+    updateEventsAndUI(
+      screen,
+      events,
+      allEvents,
+      leftTable,
+      rightGraph,
+      logTable,
+      targetDate,
+      index,
+      'Jumped to today'
+    );
     return;
   }
 
@@ -23,37 +33,107 @@ export function jumpCommand(screen, events, allEvents, args) {
     case 'lw':
       targetDate = new Date(selectedDate);
       targetDate.setDate(selectedDate.getDate() - 7);
-      updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, 'Jumped to last week');
+      updateEventsAndUI(
+        screen,
+        events,
+        allEvents,
+        leftTable,
+        rightGraph,
+        logTable,
+        targetDate,
+        index,
+        'Jumped to last week'
+      );
       break;
     case 'lm':
       targetDate = new Date(selectedDate);
       targetDate.setMonth(selectedDate.getMonth() - 1);
-      updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, 'Jumped to last month');
+      updateEventsAndUI(
+        screen,
+        events,
+        allEvents,
+        leftTable,
+        rightGraph,
+        logTable,
+        targetDate,
+        index,
+        'Jumped to last month'
+      );
       break;
     case 'ly':
       targetDate = new Date(selectedDate);
       targetDate.setFullYear(selectedDate.getFullYear() - 1);
-      updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, 'Jumped to last year');
+      updateEventsAndUI(
+        screen,
+        events,
+        allEvents,
+        leftTable,
+        rightGraph,
+        logTable,
+        targetDate,
+        index,
+        'Jumped to last year'
+      );
       break;
     case 'nw':
       targetDate = new Date(selectedDate);
       targetDate.setDate(selectedDate.getDate() + 7);
-      updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, 'Jumped to next week');
+      updateEventsAndUI(
+        screen,
+        events,
+        allEvents,
+        leftTable,
+        rightGraph,
+        logTable,
+        targetDate,
+        index,
+        'Jumped to next week'
+      );
       break;
     case '2w':
       targetDate = new Date(selectedDate);
       targetDate.setDate(selectedDate.getDate() + 14);
-      updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, 'Jumped to 2 weeks later');
+      updateEventsAndUI(
+        screen,
+        events,
+        allEvents,
+        leftTable,
+        rightGraph,
+        logTable,
+        targetDate,
+        index,
+        'Jumped to 2 weeks later'
+      );
       break;
     case 'nm':
       targetDate = new Date(selectedDate);
       targetDate.setMonth(selectedDate.getMonth() + 1);
-      updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, 'Jumped to next month');
+      updateEventsAndUI(
+        screen,
+        events,
+        allEvents,
+        leftTable,
+        rightGraph,
+        logTable,
+        targetDate,
+        index,
+        'Jumped to next month'
+      );
       break;
     case 'ny':
       targetDate = new Date(selectedDate);
       targetDate.setFullYear(selectedDate.getFullYear() + 1);
-      updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, 'Jumped to next year');
+      updateEventsAndUI(
+        screen,
+        events,
+        allEvents,
+        leftTable,
+        rightGraph,
+        logTable,
+        targetDate,
+        index,
+        'Jumped to next year'
+      );
       break;
     default:
       targetDate = convertToDateTime(arg);
@@ -62,7 +142,17 @@ export function jumpCommand(screen, events, allEvents, args) {
         screen.render();
         return;
       }
-      updateEventsAndUI(screen, events, allEvents, leftTable, rightGraph, logTable, targetDate, index, `Jumped to ${targetDate}`);
+      updateEventsAndUI(
+        screen,
+        events,
+        allEvents,
+        leftTable,
+        rightGraph,
+        logTable,
+        targetDate,
+        index,
+        `Jumped to ${targetDate}`
+      );
       break;
   }
 }
