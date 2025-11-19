@@ -5,10 +5,18 @@ export function jumpCommand(screen, events, allEvents, args) {
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const rightGraph = screen.children.find(child => child.options.label === 'Filled Time Graph');
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
-  let index = leftTable.selected || 0;
-  let currentEventDate = events[index]?.start || new Date();
+  const index = leftTable.selected || 0;
 
-  const selectedDate = currentEventDate;
+  let currentDate;
+  if (leftTable.displayItems && leftTable.displayItems[index]) {
+    currentDate = new Date(leftTable.displayItems[index].date);
+  } else if (events[index]) {
+    currentDate = new Date(events[index].start);
+  } else {
+    currentDate = new Date();
+  }
+
+  const selectedDate = currentDate;
   let targetDate;
 
   if (args.length === 0) {
