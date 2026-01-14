@@ -9,6 +9,7 @@ import os from 'os';
 
 const ENTER_HANDLER_KEY = Symbol('formBoxEnterHandler');
 const SAVE_HANDLER_KEY = Symbol('formBoxSaveHandler');
+const ESCAPE_HANDLER_KEY = Symbol('formBoxEscapeHandler');
 
 function buildEditorContent(values, { includeAllDay = false } = {}) {
   const {
@@ -212,6 +213,19 @@ function setupSaveShortcut({ formBox, formFields, handler, options }) {
   assignKeyHandler(formBox, ['C-s'], wrappedHandler, SAVE_HANDLER_KEY);
 }
 
+function setupEscapeShortcut({ formBox, leftTable, logTable, screen }) {
+  const handler = () => {
+    if (!formBox.destroyed) {
+      formBox.hide();
+    }
+    leftTable.focus();
+    screen.render();
+    logTable.log('Edit event cancelled.');
+  };
+
+  assignKeyHandler(formBox, ['escape'], handler, ESCAPE_HANDLER_KEY);
+}
+
 export function editEvent(
   auth,
   screen,
@@ -274,6 +288,13 @@ export function editEvent(
       screen,
       tempFilePath,
       options: { includeAllDay },
+    });
+
+    setupEscapeShortcut({
+      formBox,
+      leftTable,
+      logTable,
+      screen,
     });
 
     if (openEditorImmediately) {

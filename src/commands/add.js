@@ -20,16 +20,12 @@ export function addEvent(auth, screen, calendars, events, allEvents) {
   var date = null;
   var startTime = null;
   var endTime = null;
-  var description = null
+  var description = null;
   var allDay = null;
   var event = null;
 
-  const calendarNames = Array.from(
-    new Set(calendars.map(calendar => calendar.summary))
-  );
-  const calendarIDs = Array.from(
-    new Set(calendars.map(calendar => calendar.id))
-  );
+  const calendarNames = Array.from(new Set(calendars.map(calendar => calendar.summary)));
+  const calendarIDs = Array.from(new Set(calendars.map(calendar => calendar.id)));
 
   calendarList.show();
   screen.render();
@@ -65,7 +61,7 @@ Description |
       }
       const updatedText = fs.readFileSync(tempFilePath, 'utf8');
       // TODO: ここで description なら一行だけでなく，全行引っ張ってくるようにする
-      const extractDetails = (text) => {
+      const extractDetails = text => {
         const lines = text.split('\n');
         const details = {};
 
@@ -111,12 +107,12 @@ Description |
     var description = formFields.description.getValue().trim();
     var allDay = formFields.all_day.checked;
     const eventContent = `Event Title | ${title}
-Date (YYYY-MM-DD) | ${date}
-Start Time (HH:mm) | ${startTime}
-End Time (HH:mm) |  ${endTime}
-All Day (y/n)| ${allDay ? 'y' : 'n'}
-Description | ${description}
-    `;
+  Date (YYYY-MM-DD) | ${date}
+  Start Time (HH:mm) | ${startTime}
+  End Time (HH:mm) |  ${endTime}
+  All Day (y/n)| ${allDay ? 'y' : 'n'}
+  Description | ${description}
+      `;
     fs.writeFileSync(tempFilePath, eventContent, 'utf8');
     const editor = process.env.EDITOR || 'vim';
     screen.exec(editor, [tempFilePath], {}, (err, code, signal) => {
@@ -129,7 +125,7 @@ Description | ${description}
         return;
       }
       const updatedText = fs.readFileSync(tempFilePath, 'utf8');
-      const extractDetails = (text) => {
+      const extractDetails = text => {
         const lines = text.split('\n');
         const details = {};
         lines.forEach(line => {
@@ -163,8 +159,14 @@ Description | ${description}
     });
   });
 
-  formBox.key(['C-s'], () => {
+  formBox.key(['escape'], () => {
+    formBox.hide();
+    leftTable.focus();
+    screen.render();
+    logTable.log('Add event cancelled.');
+  });
 
+  formBox.key(['C-s'], () => {
     formBox.hide();
 
     // Object.values(formFields).forEach(field => field.clearValue());
@@ -184,8 +186,8 @@ Description | ${description}
         },
         end: {
           date: date,
-        }
-      }
+        },
+      };
     } else {
       event = {
         summary: title,
@@ -198,17 +200,20 @@ Description | ${description}
         },
       };
     }
-    calendar.events.insert({
-      calendarId: selectedCalendarId,
-      resource: event,
-    }, async (err, res) => {
-      if (err) return console.error('The API returned an error: ' + err);
-      await updateTable(auth, leftTable, calendars, events, allEvents);
-      logTable.log('Event successfully registered!');
-      formBox.destroy();
-      screen.render();
-      leftTable.focus();
-      screen.render();
-    });
+    calendar.events.insert(
+      {
+        calendarId: selectedCalendarId,
+        resource: event,
+      },
+      async (err, res) => {
+        if (err) return console.error('The API returned an error: ' + err);
+        await updateTable(auth, leftTable, calendars, events, allEvents);
+        logTable.log('Event successfully registered!');
+        formBox.destroy();
+        screen.render();
+        leftTable.focus();
+        screen.render();
+      }
+    );
   });
 }
