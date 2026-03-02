@@ -105,6 +105,17 @@ export async function runApp() {
     copyEventToDate(auth, screen, calendars, lastYearEvent, targetDate, events, allEvents);
   });
 
+  // 右テーブルから Enter キーでイベント詳細・編集メニューを表示
+  lastYearTable.on('select', (item, index) => {
+    const selectedItem = lastYearTable.displayItems[index];
+    const selectedEvent = selectedItem.event || null;
+    const selectedDate = selectedItem.date || null;
+    const leftIdx = leftTable.selected;
+    const leftItem = leftTable.displayItems && leftTable.displayItems[leftIdx];
+    const copyTargetDate = leftItem ? leftItem.date : null;
+    editEvent(auth, screen, calendars, selectedEvent, events, allEvents, selectedDate, copyTargetDate);
+  });
+
   setupKeyBindings(screen, auth, calendars, events, allEvents, inputBox, setting);
 
   screen.render();

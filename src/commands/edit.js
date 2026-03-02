@@ -233,7 +233,8 @@ export function editEvent(
   selectedEvent,
   events,
   allEvents,
-  selectedDate = null
+  selectedDate = null,
+  copyTargetDate = null
 ) {
   const calendar = google.calendar({ version: 'v3', auth });
   const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
@@ -459,6 +460,12 @@ export function editEvent(
       case 2:
         promptCalendarSelection(async (selectedEditCalendar, selectedEditCalendarId) => {
           const initialValues = eventToFormValues(selectedEvent, fallbackDate);
+          if (copyTargetDate) {
+            const targetDateInfo = formatDate(copyTargetDate);
+            if (targetDateInfo?.date) {
+              initialValues.date = targetDateInfo.date;
+            }
+          }
 
           await prepareForm({
             label: `Edit Event - ${selectedEditCalendar}`,
