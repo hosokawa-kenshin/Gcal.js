@@ -2,7 +2,7 @@ import { jumpCommand } from '../commands/jump.js';
 import { addEvent } from '../commands/add.js';
 import { addEventNL } from '../commands/addNL.js';
 import { editEvent } from '../commands/edit.js';
-import { toggleFullscreen, toggleLastYearView } from './layout.js';
+import { toggleFullscreen, toggleLastYearView, toggleCurrentDescView } from './layout.js';
 
 export function setupVimKeysForNavigation(widget, screen, focusbackwith) {
     screen.key(['j', 'k', 'h', 'l'], (ch, key) => {
@@ -76,6 +76,9 @@ export function setupKeyBindings(screen, auth, calendars, events, allEvents, inp
     screen.key(keyBindings.toggleLastYear || ['y'], () =>
         toggleLastYearView(screen, events, allEvents));
 
+    screen.key(keyBindings.toggleCurrentDesc || ['Y', 'S-y'], () =>
+        toggleCurrentDescView(screen, events, allEvents));
+
     screen.key(['tab'], () => {
         const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
         const lastYearTable = screen.children.find(child => child.options.label === 'Last Year Events');
@@ -105,5 +108,6 @@ export function getDefaultKeyBindings() {
         fullscreenTable3: ['3'],
         exitFullscreen: ['escape'],
         toggleLastYear: ['y'],
+        toggleCurrentDesc: ['Y'],
     };
 }

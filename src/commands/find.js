@@ -2,23 +2,47 @@ import {
   createDisplayItemsForEvents,
   formatDisplayItems,
   searchDisplayItemIndex,
+  setLastYearSortOrder,
+  applyLastYearSort,
+  isRecentDescViewActive,
 } from '../ui/layout.js';
 import { isSameDate } from '../utils/dateUtils.js';
 
 /**
- * 去年の予定パネル専用の検索処理
- * "find <word>" または "f <word>" で前年のイベントをキーワードフィルタする
+ * 去年の予定パネル / Recent Events パネル専用の検索処理
+ * "find <word>" または "f <word>" でイベントをキーワードフィルタする
+ * "sort [asc|desc]" または "s [asc|desc]" でソート順を切り替える
  */
 export function findInLastYear(input, allEvents, lastYearTable, logTable, screen) {
   const [command, ...args] = input.trim().split(/\s+/);
-  if (command !== 'find' && command !== 'f') {
-    logTable.log('Last Year 検索: "find <keyword>" または "f <keyword>" で検索してください。');
+  const isRecent = isRecentDescViewActive();
+
+  // sort コマンドの処理
+  if (command === 'sort' || command === 's') {
+    const order = args[0]; // 'asc' | 'desc' | undefined
+    if (order && order !== 'asc' && order !== 'desc') {
+      logTable.log('並び替え: "sort asc" または "sort desc" を指定してください');
+      screen.render();
+      return;
+    }
+    setLastYearSortOrder(order);
+    applyLastYearSort(lastYearTable, screen);
+    const label = order ? `${order === 'asc' ? '昇順' : '降順'}` : 'トグル';
+    logTable.log(label === 'トグル' ? '並び順を切り替えました' : `${label}に並び替えました`);
     screen.render();
     return;
   }
 
-  const lastYearNum = new Date().getFullYear() - 1;
-  let filteredEvents = allEvents.filter(e => e.start.getFullYear() === lastYearNum);
+  if (command !== 'find' && command !== 'f') {
+    logTable.log('"find <keyword>" で検索，"sort [asc|desc]" で並び替えができます');
+    screen.render();
+    return;
+  }
+
+  // recentDesc モードでは全イベント、lastYear モードでは前年のみ対象
+  let filteredEvents = isRecent
+    ? [...allEvents]
+    : allEvents.filter(e => e.start.getFullYear() === new Date().getFullYear() - 1);
 
   if (args.length > 0) {
     filteredEvents = filteredEvents.filter(event =>
@@ -27,20 +51,17 @@ export function findInLastYear(input, allEvents, lastYearTable, logTable, screen
   }
 
   if (filteredEvents.length === 0) {
-    logTable.log(`Last Year: "${args.join(' ')}" に一致するイベントが見つかりませんでした。`);
+    logTable.log(`"${args.join(' ')}" に一致するイベントが見つかりませんでした`);
     screen.render();
     return;
   }
 
   const displayItems = createDisplayItemsForEvents(filteredEvents);
-  const formatted = formatDisplayItems(displayItems);
   lastYearTable.displayItems = displayItems;
-  lastYearTable.setItems(formatted);
-  lastYearTable.setLabel(`Last Year Events (${filteredEvents.length} results)`);
   lastYearTable.select(0);
   lastYearTable.scrollTo(0);
-  logTable.log(`Last Year: "${args.join(' ')}" で ${filteredEvents.length} 件に絞り込みました。`);
-  screen.render();
+  logTable.log(`"${args.join(' ')}" で ${filteredEvents.length} 件に絞り込みました`);
+  applyLastYearSort(lastYearTable, screen, `(${filteredEvents.length} results)`);
 }
 
 export function findCommand(screen, events, allEvents, args, keypressListener) {

@@ -42,6 +42,9 @@
         ],
         "toggleLastYear": [
             "y"
+        ],
+        "toggleCurrentDesc": [
+            "Y"
         ]
     }
 }

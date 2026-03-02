@@ -21,6 +21,8 @@ let currentDisplayMode = 'split'; // 'split', 'fullscreen1', 'fullscreen2', 'ful
 let originalLayouts = {}; // 各テーブルの元の位置・サイズ情報
 let tableReferences = {}; // テーブル参照を保持
 let lastYearViewActive = false; // 去年の予定ビュー表示状態
+let lastYearSortOrder = 'asc'; // 去年の予定テーブルのソート順 ('asc' or 'desc')
+let recentDescViewActive = false; // 現在日時から降順ビュー表示状態
 
 /**
  * イベントを日付ごとに展開してMapに格納する共通処理
@@ -176,17 +178,23 @@ export function toggleLastYearView(screen, events, allEvents) {
   if (!lastYearTable) return;
 
   if (!lastYearViewActive) {
+    // recentDesc ビューが開いていれば先に閉じる
+    if (recentDescViewActive) {
+      recentDescViewActive = false;
+      lastYearSortOrder = 'asc';
+      lastYearTable.hide();
+    }
     // Last Year ビューに切り替え：allEvents を使って全去年イベントで再初期化（検索状態リセット）
     const sourceEvents = allEvents || events;
     const lastYearDisplayItems = createLastYearDisplayItems(sourceEvents);
-    const formattedLastYearEvents = formatDisplayItems(lastYearDisplayItems);
     lastYearTable.displayItems = lastYearDisplayItems;
-    lastYearTable.setItems(formattedLastYearEvents);
-    lastYearTable.setLabel('Last Year Events');
+    lastYearTable.setItems(formatDisplayItems(lastYearDisplayItems));
+    lastYearTable.setLabel('Last Year Events ↑');
 
     rightGraph.hide();
     logTable.hide();
     lastYearTable.show();
+    lastYearTable.focus();
     lastYearViewActive = true;
 
     // 左テーブルの選択日と同期（-1年の日付に移動）
@@ -207,11 +215,107 @@ export function toggleLastYearView(screen, events, allEvents) {
     rightGraph.show();
     logTable.show();
     lastYearViewActive = false;
+    lastYearSortOrder = 'asc';
   }
 
   if (screenInstance) {
     screenInstance.render();
   }
+}
+
+/**
+ * 現在日時から降順で全イベントを右パネルに表示するビューをトグルする
+ * @param {object} screen - blessed screen
+ * @param {Array} events - イベント配列
+ * @param {Array} allEvents - 全イベント配列
+ */
+export function toggleCurrentDescView(screen, events, allEvents) {
+  const rightGraph = tableReferences.rightGraph;
+  const logTable = tableReferences.logTable;
+  const lastYearTable = tableReferences.lastYearTable;
+
+  if (!lastYearTable) return;
+
+  if (!recentDescViewActive) {
+    // lastYear ビューが開いていれば先に閉じる
+    if (lastYearViewActive) {
+      lastYearViewActive = false;
+    }
+    lastYearSortOrder = 'desc';
+
+    // 全イベントを降順で表示（今日以前のイベントを最近順に）
+    const sourceEvents = allEvents || events;
+    const displayItems = createDisplayItemsForEvents(sourceEvents);
+    displayItems.sort((a, b) => b.date - a.date);
+    lastYearTable.displayItems = displayItems;
+    lastYearTable.setItems(formatDisplayItems(displayItems));
+    lastYearTable.setLabel('Recent Events ↓');
+
+    rightGraph.hide();
+    logTable.hide();
+    lastYearTable.show();
+    lastYearTable.focus();
+    recentDescViewActive = true;
+
+    // 今日の日付に近いアイテムにスクロール
+    const today = new Date();
+    const idx = displayItems.findIndex(item => item.date <= today);
+    const scrollIdx = idx >= 0 ? idx : 0;
+    lastYearTable.select(scrollIdx);
+    lastYearTable.scrollTo(scrollIdx + Math.floor(lastYearTable.height / 2));
+  } else {
+    // グラフ/ログビューに戻す
+    lastYearTable.hide();
+    rightGraph.show();
+    logTable.show();
+    recentDescViewActive = false;
+    lastYearSortOrder = 'asc';
+  }
+
+  if (screenInstance) {
+    screenInstance.render();
+  }
+}
+
+/**
+ * 現在日時から降順ビューがアクティブかどうかを返す
+ */
+export function isRecentDescViewActive() {
+  return recentDescViewActive;
+}
+
+/**
+ * 去年の予定テーブルのソート順を設定する
+ * @param {'asc'|'desc'|undefined} order - 'asc'/'desc' で固定，undefined でトグル
+ */
+export function setLastYearSortOrder(order) {
+  if (order === 'asc' || order === 'desc') {
+    lastYearSortOrder = order;
+  } else {
+    lastYearSortOrder = lastYearSortOrder === 'asc' ? 'desc' : 'asc';
+  }
+}
+
+/**
+ * 去年の予定テーブルのソートを適用して再描画する
+ * @param {object} lastYearTable - blessed list table
+ * @param {object} screen - blessed screen
+ * @param {string} [labelSuffix] - ラベルに追加するサフィックス（例: "(5 results)"）
+ */
+export function applyLastYearSort(lastYearTable, screen, labelSuffix) {
+  if (!lastYearTable || !lastYearTable.displayItems) return;
+
+  if (lastYearSortOrder === 'desc') {
+    lastYearTable.displayItems.sort((a, b) => b.date - a.date);
+  } else {
+    lastYearTable.displayItems.sort((a, b) => a.date - b.date);
+  }
+
+  const arrow = lastYearSortOrder === 'asc' ? '↑' : '↓';
+  const suffix = labelSuffix ? ` ${labelSuffix}` : '';
+  lastYearTable.setLabel(`Last Year Events ${arrow}${suffix}`);
+  lastYearTable.setItems(formatDisplayItems(lastYearTable.displayItems));
+  screen.render();
 }
 
 /**
