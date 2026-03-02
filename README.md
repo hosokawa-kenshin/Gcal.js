@@ -33,18 +33,22 @@
 </p>
 
 ## For Japanese
+
 [日本語版README](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/README-ja.md)
 
 ## Requirements
+
 - Node.js
 - Google Calendar API must be enabled in the Google Cloud Console
 - `credentials.json` file must be obtained from the Google Cloud Console and placed in the program directory
   - For detailed setup instructions, see [Google Calendar API Credentials Setup Guide](./docs/oauth-en.md)
 
 ## Setup
+
 ### Install dependencies
 
 Run the following command in the project directory to install the necessary dependencies:
+
 ```bash
 npm install
 ```
@@ -58,12 +62,15 @@ npm install
 ### Create a symlink
 
 To command Gcal (cldr), create a symlink in a location where the path is accessible.
+
 ```bash
 export PATH=path/to/your/directory:$PATH
 cd your/directory
 ln -s path/to/Gcal.js/cldr cldr
 ```
+
 The following is a configuration example
+
 ```bash
 export PATH=$HOME/.local/bin:$PATH #(Permanent by adding it to .bashrc or .zshrc)
 cd ~/.local/bin
@@ -71,21 +78,25 @@ ln -s ~/git/Gcal.js/cldr cldr
 ```
 
 ## Usage
+
 ### Display
+
 When you start Gcal.js, three tables are displayed.  
 On the left are the events registered in Google Calendar, on the upper right is a graph showing the dates and times of events, and on the lower right is a log.  
 The event under the cursor is highlighted in blue.
 
 ### Basic operations
+
 Use the arrow keys or `jk` keys (like vim) to move the cursor.  
 Press the `q` key to exit the system.
 To select an event, place the cursor on the event you want to select and press the `Enter` key.
 Press the `Space` key to open the command line.
 
 ### Event add/edit/delete functions and available commands
-Please refer to the following for operation methods, specifications, and details of each:
-- [Add events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/add.md) (Added information about how to add events using LLM on 2025/6/27)
 
+Please refer to the following for operation methods, specifications, and details of each:
+
+- [Add events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/add.md)
 - [Edit events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/edit.md)
 
 - [Delete events](https://github.com/hosokawa-kenshin/Gcal.js/blob/main/docs/cmd/delete.md)
@@ -120,6 +131,7 @@ Please refer to the following for operation methods, specifications, and details
 | `update`      | Update Gcal.js                                                                  |
 
 ## Shortcuts
+
 Some functions and commands have shortcuts.  
 You can also assign your own preferred keys.  
 The default key bindings are shown below.
@@ -138,6 +150,7 @@ The default key bindings are shown below.
 
 Set your key bindings:  
 Edit setting.json, key bindings can be changed.
+
 ```
 {
     "keyBindings": {
@@ -155,6 +168,7 @@ Edit setting.json, key bindings can be changed.
     }
 }
 ```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
