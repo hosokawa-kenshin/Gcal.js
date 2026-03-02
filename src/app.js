@@ -2,10 +2,11 @@ import '../src/utils/datePrototype.js';
 import { createLayout, removeCommandPopup } from './ui/layout.js';
 import { handleInput } from './ui/inputHandler.js';
 import { authorize, initializeCalendars, initializeEvents } from './services/calendarService.js';
-import { editEvent } from './commands/edit.js';
+import { editEvent, copyEventToDate } from './commands/edit.js';
 import { hasUpdates, isForkedRepository } from './commands/update.js';
 import { loadSetting } from './services/settingService.js';
 import { setupKeyBindings } from './ui/keyConfig.js';
+import { findInLastYear } from './commands/find.js';
 
 export async function runApp() {
   console.log('Running app ...');
@@ -26,9 +27,12 @@ export async function runApp() {
   ];
   events.sort((a, b) => a.start - b.start);
 
-  const { screen, inputBox, keypressListener } = createLayout(calendars, events);
+  const { screen, inputBox, keypressListener, lastYearTable } = createLayout(calendars, events);
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
+
+  // 去年パネル検索用のサブミットハンドラー（null = 通常の handleInput）
+  let lastYearSubmitHandler = null;
 
   if (updateAvailable) {
     logTable.log(
@@ -40,19 +44,26 @@ export async function runApp() {
 
   inputBox.on('submit', value => {
     const inputValue = value;
+    const handler = lastYearSubmitHandler;
+    lastYearSubmitHandler = null;
 
     inputBox.clearValue();
     inputBox.hide();
 
     removeCommandPopup();
 
-    handleInput(auth, inputValue, screen, calendars, events, allEvents, keypressListener);
+    if (handler) {
+      handler(inputValue);
+    } else {
+      handleInput(auth, inputValue, screen, calendars, events, allEvents, keypressListener);
+    }
 
     screen.render();
   });
 
   inputBox.key(['escape'], () => {
     removeCommandPopup();
+    lastYearSubmitHandler = null;
     inputBox.hide();
     screen.render();
   });
@@ -62,6 +73,47 @@ export async function runApp() {
     const selectedEvent = selectedItem.event || null;
     const selectedDate = selectedItem.date || null;
     editEvent(auth, screen, calendars, selectedEvent, events, allEvents, selectedDate);
+  });
+
+  // 去年の予定テーブルから space キーで検索 inputBox を起動
+  lastYearTable.key(['space'], () => {
+    lastYearSubmitHandler = inputValue => {
+      findInLastYear(inputValue, allEvents, lastYearTable, logTable, screen);
+      lastYearTable.focus();
+    };
+    inputBox.show();
+    inputBox.focus();
+    screen.render();
+  });
+
+  // 去年の予定テーブルから c キーでイベントをコピー
+  lastYearTable.key(['c'], () => {
+    const idx = lastYearTable.selected;
+    if (!lastYearTable.displayItems || !lastYearTable.displayItems[idx]) return;
+    const { event: lastYearEvent } = lastYearTable.displayItems[idx];
+    if (!lastYearEvent) {
+      logTable.log('コピーするイベントが選択されていません。');
+      screen.render();
+      return;
+    }
+
+    // 左テーブルの選択日を取得
+    const leftIdx = leftTable.selected;
+    const leftItem = leftTable.displayItems && leftTable.displayItems[leftIdx];
+    const targetDate = leftItem ? leftItem.date : new Date();
+
+    copyEventToDate(auth, screen, calendars, lastYearEvent, targetDate, events, allEvents);
+  });
+
+  // 右テーブルから Enter キーでイベント詳細・編集メニューを表示
+  lastYearTable.on('select', (item, index) => {
+    const selectedItem = lastYearTable.displayItems[index];
+    const selectedEvent = selectedItem.event || null;
+    const selectedDate = selectedItem.date || null;
+    const leftIdx = leftTable.selected;
+    const leftItem = leftTable.displayItems && leftTable.displayItems[leftIdx];
+    const copyTargetDate = leftItem ? leftItem.date : null;
+    editEvent(auth, screen, calendars, selectedEvent, events, allEvents, selectedDate, copyTargetDate);
   });
 
   setupKeyBindings(screen, auth, calendars, events, allEvents, inputBox, setting);

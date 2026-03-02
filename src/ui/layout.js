@@ -7,6 +7,7 @@ import { convertToDateTime, getDayOfWeek } from '../utils/dateUtils.js';
 import {
   createEventDetailTable,
   createEventTable,
+  createLastYearTable,
   createLeftTable,
   createLogTable,
 } from './table.js';
@@ -19,6 +20,9 @@ const { isHoliday } = pkg;
 let currentDisplayMode = 'split'; // 'split', 'fullscreen1', 'fullscreen2', 'fullscreen3'
 let originalLayouts = {}; // 各テーブルの元の位置・サイズ情報
 let tableReferences = {}; // テーブル参照を保持
+let lastYearViewActive = false; // 去年の予定ビュー表示状態
+let lastYearSortOrder = 'asc'; // 去年の予定テーブルのソート順 ('asc' or 'desc')
+let recentDescViewActive = false; // 現在日時から降順ビュー表示状態
 
 /**
  * イベントを日付ごとに展開してMapに格納する共通処理
@@ -148,6 +152,170 @@ export function searchDisplayItemIndex(date, displayItems) {
 export function searchDisplayItemIndexOfToday(displayItems) {
   const today = new Date();
   return searchDisplayItemIndex(today, displayItems);
+}
+
+/**
+ * 去年の予定用 displayItems を生成する
+ * 現在の events から前年（today - 1年）を基準に createDisplayItems を呼び出す
+ */
+export function createLastYearDisplayItems(events) {
+  const today = new Date();
+  const lastYear = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+  return createDisplayItems(events, lastYear);
+}
+
+/**
+ * 去年の予定ビューと通常ビュー（グラフ+ログ）をトグルする
+ * @param {object} screen - blessed screen
+ * @param {Array} events - イベント配列（現在表示用）
+ * @param {Array} allEvents - 全イベント配列（去年パネルのリセットに使用）
+ */
+export function toggleLastYearView(screen, events, allEvents) {
+  const rightGraph = tableReferences.rightGraph;
+  const logTable = tableReferences.logTable;
+  const lastYearTable = tableReferences.lastYearTable;
+
+  if (!lastYearTable) return;
+
+  if (!lastYearViewActive) {
+    // recentDesc ビューが開いていれば先に閉じる
+    if (recentDescViewActive) {
+      recentDescViewActive = false;
+      lastYearSortOrder = 'asc';
+      lastYearTable.hide();
+    }
+    // Last Year ビューに切り替え：allEvents を使って全去年イベントで再初期化（検索状態リセット）
+    const sourceEvents = allEvents || events;
+    const lastYearDisplayItems = createLastYearDisplayItems(sourceEvents);
+    lastYearTable.displayItems = lastYearDisplayItems;
+    lastYearTable.setItems(formatDisplayItems(lastYearDisplayItems));
+    lastYearTable.setLabel('Last Year Events ↑');
+
+    rightGraph.hide();
+    logTable.hide();
+    lastYearTable.show();
+    lastYearTable.focus();
+    lastYearViewActive = true;
+
+    // 左テーブルの選択日と同期（-1年の日付に移動）
+    const leftTable = tableReferences.leftTable;
+    if (leftTable && leftTable.displayItems && lastYearTable.displayItems) {
+      const selectedItem = leftTable.displayItems[leftTable.selected];
+      if (selectedItem) {
+        const targetDate = new Date(selectedItem.date);
+        targetDate.setFullYear(targetDate.getFullYear() - 1);
+        const idx = searchDisplayItemIndex(targetDate, lastYearTable.displayItems);
+        lastYearTable.select(idx);
+        lastYearTable.scrollTo(idx + Math.floor(lastYearTable.height / 2));
+      }
+    }
+  } else {
+    // グラフ/ログビューに戻す
+    lastYearTable.hide();
+    rightGraph.show();
+    logTable.show();
+    lastYearViewActive = false;
+    lastYearSortOrder = 'asc';
+  }
+
+  if (screenInstance) {
+    screenInstance.render();
+  }
+}
+
+/**
+ * 現在日時から降順で全イベントを右パネルに表示するビューをトグルする
+ * @param {object} screen - blessed screen
+ * @param {Array} events - イベント配列
+ * @param {Array} allEvents - 全イベント配列
+ */
+export function toggleCurrentDescView(screen, events, allEvents) {
+  const rightGraph = tableReferences.rightGraph;
+  const logTable = tableReferences.logTable;
+  const lastYearTable = tableReferences.lastYearTable;
+
+  if (!lastYearTable) return;
+
+  if (!recentDescViewActive) {
+    // lastYear ビューが開いていれば先に閉じる
+    if (lastYearViewActive) {
+      lastYearViewActive = false;
+    }
+    lastYearSortOrder = 'desc';
+
+    // 全イベントを降順で表示（今日以前のイベントを最近順に）
+    const sourceEvents = allEvents || events;
+    const displayItems = createDisplayItemsForEvents(sourceEvents);
+    displayItems.sort((a, b) => b.date - a.date);
+    lastYearTable.displayItems = displayItems;
+    lastYearTable.setItems(formatDisplayItems(displayItems));
+    lastYearTable.setLabel('Recent Events ↓');
+
+    rightGraph.hide();
+    logTable.hide();
+    lastYearTable.show();
+    lastYearTable.focus();
+    recentDescViewActive = true;
+
+    // 今日の日付に近いアイテムにスクロール
+    const today = new Date();
+    const idx = displayItems.findIndex(item => item.date <= today);
+    const scrollIdx = idx >= 0 ? idx : 0;
+    lastYearTable.select(scrollIdx);
+    lastYearTable.scrollTo(scrollIdx + Math.floor(lastYearTable.height / 2));
+  } else {
+    // グラフ/ログビューに戻す
+    lastYearTable.hide();
+    rightGraph.show();
+    logTable.show();
+    recentDescViewActive = false;
+    lastYearSortOrder = 'asc';
+  }
+
+  if (screenInstance) {
+    screenInstance.render();
+  }
+}
+
+/**
+ * 現在日時から降順ビューがアクティブかどうかを返す
+ */
+export function isRecentDescViewActive() {
+  return recentDescViewActive;
+}
+
+/**
+ * 去年の予定テーブルのソート順を設定する
+ * @param {'asc'|'desc'|undefined} order - 'asc'/'desc' で固定，undefined でトグル
+ */
+export function setLastYearSortOrder(order) {
+  if (order === 'asc' || order === 'desc') {
+    lastYearSortOrder = order;
+  } else {
+    lastYearSortOrder = lastYearSortOrder === 'asc' ? 'desc' : 'asc';
+  }
+}
+
+/**
+ * 去年の予定テーブルのソートを適用して再描画する
+ * @param {object} lastYearTable - blessed list table
+ * @param {object} screen - blessed screen
+ * @param {string} [labelSuffix] - ラベルに追加するサフィックス（例: "(5 results)"）
+ */
+export function applyLastYearSort(lastYearTable, screen, labelSuffix) {
+  if (!lastYearTable || !lastYearTable.displayItems) return;
+
+  if (lastYearSortOrder === 'desc') {
+    lastYearTable.displayItems.sort((a, b) => b.date - a.date);
+  } else {
+    lastYearTable.displayItems.sort((a, b) => a.date - b.date);
+  }
+
+  const arrow = lastYearSortOrder === 'asc' ? '↑' : '↓';
+  const suffix = labelSuffix ? ` ${labelSuffix}` : '';
+  lastYearTable.setLabel(`Last Year Events ${arrow}${suffix}`);
+  lastYearTable.setItems(formatDisplayItems(lastYearTable.displayItems));
+  screen.render();
 }
 
 /**
@@ -439,6 +607,13 @@ export function recalculateDefaultLayouts() {
       height: '22%',
       hidden: false,
     },
+    lastYearTable: {
+      top: 0,
+      left: '50%',
+      width: '50%',
+      height: '100%',
+      hidden: true,
+    },
   };
 
   // originalLayoutsを新しいデフォルト値で更新
@@ -462,9 +637,11 @@ export function handleTerminalResize() {
         table.left = layout.left;
         table.width = layout.width;
         table.height = layout.height;
-        table.hidden = layout.hidden;
+        // hidden は lastYearViewActive の状態に従って設定する（layout.hidden は使わない）
       }
     });
+    // hidden 状態を現在のビューモードに合わせて再適用
+    showAllTables();
     if (screenInstance) {
       screenInstance.render();
     }
@@ -499,12 +676,22 @@ export function hideOtherTables(activeTableId) {
 
 export function showAllTables() {
   Object.keys(tableReferences).forEach(tableId => {
-    tableReferences[tableId].hidden = false;
+    // lastYearTable は lastYearViewActive のときのみ表示する
+    if (tableId === 'lastYearTable') {
+      tableReferences[tableId].hidden = !lastYearViewActive;
+    } else if (tableId === 'rightGraph' || tableId === 'logTable') {
+      tableReferences[tableId].hidden = lastYearViewActive;
+    } else {
+      tableReferences[tableId].hidden = false;
+    }
   });
 }
 
 export function toggleFullscreen(tableIndex) {
-  const tableIds = ['leftTable', 'rightGraph', 'logTable'];
+  // Last Year ビュー表示中は rightGraph の代わりに lastYearTable を tableIndex=2 として扱う
+  const tableIds = lastYearViewActive
+    ? ['leftTable', 'lastYearTable', 'logTable']
+    : ['leftTable', 'rightGraph', 'logTable'];
 
   // escapeキーの場合（tableIndex = 0）、3分割表示に戻る
   if (tableIndex === 0) {
@@ -841,6 +1028,13 @@ export function createLayout(calendars, events) {
   updateGraph(screen, rightGraph, leftTable.selected, events, displayItems);
   const eventDetailTable = createEventDetailTable(screen);
 
+  // 去年の予定テーブルを生成・初期化
+  const lastYearTable = createLastYearTable(screen);
+  const lastYearDisplayItems = createLastYearDisplayItems(events);
+  const formattedLastYearEvents = formatDisplayItems(lastYearDisplayItems);
+  lastYearTable.displayItems = lastYearDisplayItems;
+  lastYearTable.setItems(formattedLastYearEvents);
+
   screen.append(inputBox);
   screen.append(list);
   screen.append(editCalendarCommandList);
@@ -852,19 +1046,23 @@ export function createLayout(calendars, events) {
   setupVimKeysForNavigation(commandList, screen, null);
   setupVimKeysForNavigation(editCalendarCommandList, screen, null);
   setupVimKeysForNavigation(eventTable, screen, null);
+  setupVimKeysForNavigation(lastYearTable, screen, null);
 
   // テーブル参照の初期化と元のレイアウト情報の保存
   leftTable.tableId = 'leftTable';
   rightGraph.tableId = 'rightGraph';
   logTable.tableId = 'logTable';
+  lastYearTable.tableId = 'lastYearTable';
 
   tableReferences.leftTable = leftTable;
   tableReferences.rightGraph = rightGraph;
   tableReferences.logTable = logTable;
+  tableReferences.lastYearTable = lastYearTable;
 
   saveOriginalLayout(leftTable, 'leftTable');
   saveOriginalLayout(rightGraph, 'rightGraph');
   saveOriginalLayout(logTable, 'logTable');
+  saveOriginalLayout(lastYearTable, 'lastYearTable');
 
   leftTable.focus();
   leftTable.key(['space'], () => {
@@ -873,5 +1071,5 @@ export function createLayout(calendars, events) {
     screen.render();
   });
   console.log('Create Layout');
-  return { screen, inputBox, keypressListener };
+  return { screen, inputBox, keypressListener, lastYearTable };
 }
