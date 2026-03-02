@@ -6,6 +6,7 @@ import { editEvent, copyEventToDate } from './commands/edit.js';
 import { hasUpdates, isForkedRepository } from './commands/update.js';
 import { loadSetting } from './services/settingService.js';
 import { setupKeyBindings } from './ui/keyConfig.js';
+import { findInLastYear } from './commands/find.js';
 
 export async function runApp() {
   console.log('Running app ...');
@@ -30,6 +31,9 @@ export async function runApp() {
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
 
+  // 去年パネル検索用のサブミットハンドラー（null = 通常の handleInput）
+  let lastYearSubmitHandler = null;
+
   if (updateAvailable) {
     logTable.log(
       '{blue-fg}Update available! Please run update command to update the app.{/blue-fg}'
@@ -40,19 +44,26 @@ export async function runApp() {
 
   inputBox.on('submit', value => {
     const inputValue = value;
+    const handler = lastYearSubmitHandler;
+    lastYearSubmitHandler = null;
 
     inputBox.clearValue();
     inputBox.hide();
 
     removeCommandPopup();
 
-    handleInput(auth, inputValue, screen, calendars, events, allEvents, keypressListener);
+    if (handler) {
+      handler(inputValue);
+    } else {
+      handleInput(auth, inputValue, screen, calendars, events, allEvents, keypressListener);
+    }
 
     screen.render();
   });
 
   inputBox.key(['escape'], () => {
     removeCommandPopup();
+    lastYearSubmitHandler = null;
     inputBox.hide();
     screen.render();
   });
@@ -62,6 +73,17 @@ export async function runApp() {
     const selectedEvent = selectedItem.event || null;
     const selectedDate = selectedItem.date || null;
     editEvent(auth, screen, calendars, selectedEvent, events, allEvents, selectedDate);
+  });
+
+  // 去年の予定テーブルから space キーで検索 inputBox を起動
+  lastYearTable.key(['space'], () => {
+    lastYearSubmitHandler = inputValue => {
+      findInLastYear(inputValue, allEvents, lastYearTable, logTable, screen);
+      lastYearTable.focus();
+    };
+    inputBox.show();
+    inputBox.focus();
+    screen.render();
   });
 
   // 去年の予定テーブルから c キーでイベントをコピー

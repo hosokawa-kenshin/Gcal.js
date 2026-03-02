@@ -5,6 +5,44 @@ import {
 } from '../ui/layout.js';
 import { isSameDate } from '../utils/dateUtils.js';
 
+/**
+ * 去年の予定パネル専用の検索処理
+ * "find <word>" または "f <word>" で前年のイベントをキーワードフィルタする
+ */
+export function findInLastYear(input, allEvents, lastYearTable, logTable, screen) {
+  const [command, ...args] = input.trim().split(/\s+/);
+  if (command !== 'find' && command !== 'f') {
+    logTable.log('Last Year 検索: "find <keyword>" または "f <keyword>" で検索してください。');
+    screen.render();
+    return;
+  }
+
+  const lastYearNum = new Date().getFullYear() - 1;
+  let filteredEvents = allEvents.filter(e => e.start.getFullYear() === lastYearNum);
+
+  if (args.length > 0) {
+    filteredEvents = filteredEvents.filter(event =>
+      args.every(kw => event.summary && event.summary.includes(kw))
+    );
+  }
+
+  if (filteredEvents.length === 0) {
+    logTable.log(`Last Year: "${args.join(' ')}" に一致するイベントが見つかりませんでした。`);
+    screen.render();
+    return;
+  }
+
+  const displayItems = createDisplayItemsForEvents(filteredEvents);
+  const formatted = formatDisplayItems(displayItems);
+  lastYearTable.displayItems = displayItems;
+  lastYearTable.setItems(formatted);
+  lastYearTable.setLabel(`Last Year Events (${filteredEvents.length} results)`);
+  lastYearTable.select(0);
+  lastYearTable.scrollTo(0);
+  logTable.log(`Last Year: "${args.join(' ')}" で ${filteredEvents.length} 件に絞り込みました。`);
+  screen.render();
+}
+
 export function findCommand(screen, events, allEvents, args, keypressListener) {
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');

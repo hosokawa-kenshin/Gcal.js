@@ -57,6 +57,12 @@ export function setupKeyBindings(screen, auth, calendars, events, allEvents, inp
         jumpCommand(screen, events, allEvents, []));
 
     screen.key(keyBindings.toggleCommandLine || ['space'], () => {
+        // lastYearTable にフォーカスがある場合はトップレベルの space を無視
+        // blessed の list は内部の rows にフォーカスが当たるため親もチェック
+        const focused = screen.focused;
+        const focusedLabel = focused && focused.options && focused.options.label;
+        const parentLabel = focused && focused.parent && focused.parent.options && focused.parent.options.label;
+        if (focusedLabel === 'Last Year Events' || parentLabel === 'Last Year Events') return;
         inputBox.show();
         inputBox.focus();
         screen.render();
@@ -68,7 +74,7 @@ export function setupKeyBindings(screen, auth, calendars, events, allEvents, inp
     screen.key(keyBindings.exitFullscreen || ['escape'], () => toggleFullscreen(0));
 
     screen.key(keyBindings.toggleLastYear || ['y'], () =>
-        toggleLastYearView(screen, events));
+        toggleLastYearView(screen, events, allEvents));
 
     screen.key(['tab'], () => {
         const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');

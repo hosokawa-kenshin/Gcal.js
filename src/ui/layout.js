@@ -165,9 +165,10 @@ export function createLastYearDisplayItems(events) {
 /**
  * 去年の予定ビューと通常ビュー（グラフ+ログ）をトグルする
  * @param {object} screen - blessed screen
- * @param {Array} events - イベント配列
+ * @param {Array} events - イベント配列（現在表示用）
+ * @param {Array} allEvents - 全イベント配列（去年パネルのリセットに使用）
  */
-export function toggleLastYearView(screen, events) {
+export function toggleLastYearView(screen, events, allEvents) {
   const rightGraph = tableReferences.rightGraph;
   const logTable = tableReferences.logTable;
   const lastYearTable = tableReferences.lastYearTable;
@@ -175,13 +176,20 @@ export function toggleLastYearView(screen, events) {
   if (!lastYearTable) return;
 
   if (!lastYearViewActive) {
-    // Last Year ビューに切り替え
+    // Last Year ビューに切り替え：allEvents を使って全去年イベントで再初期化（検索状態リセット）
+    const sourceEvents = allEvents || events;
+    const lastYearDisplayItems = createLastYearDisplayItems(sourceEvents);
+    const formattedLastYearEvents = formatDisplayItems(lastYearDisplayItems);
+    lastYearTable.displayItems = lastYearDisplayItems;
+    lastYearTable.setItems(formattedLastYearEvents);
+    lastYearTable.setLabel('Last Year Events');
+
     rightGraph.hide();
     logTable.hide();
     lastYearTable.show();
     lastYearViewActive = true;
 
-    // 初回表示時に左テーブルの選択日と同期（-1年の日付に移動）
+    // 左テーブルの選択日と同期（-1年の日付に移動）
     const leftTable = tableReferences.leftTable;
     if (leftTable && leftTable.displayItems && lastYearTable.displayItems) {
       const selectedItem = leftTable.displayItems[leftTable.selected];
