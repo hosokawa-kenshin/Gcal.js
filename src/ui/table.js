@@ -94,6 +94,30 @@ export function createEventTable(screen) {
   return eventTable;
 }
 
+export function createLastYearTable(screen) {
+  const lastYearTable = blessed.list({
+    hidden: true,
+    keys: true,
+    fg: 'white',
+    tags: true,
+    selectedFg: 'white',
+    selectedBg: 'blue',
+    interactive: true,
+    label: 'Last Year Events',
+    top: 0,
+    left: '50%',
+    width: '50%',
+    height: '100%',
+    border: { type: 'line', fg: 'yellow' },
+    columnSpacing: 2,
+    style: {
+      header: { bold: true },
+    },
+  });
+  screen.append(lastYearTable);
+  return lastYearTable;
+}
+
 export function createEventDetailTable(screen) {
   const eventDetailTable = blessed.list({
     hidden: true,

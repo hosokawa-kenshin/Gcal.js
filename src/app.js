@@ -2,7 +2,7 @@ import '../src/utils/datePrototype.js';
 import { createLayout, removeCommandPopup } from './ui/layout.js';
 import { handleInput } from './ui/inputHandler.js';
 import { authorize, initializeCalendars, initializeEvents } from './services/calendarService.js';
-import { editEvent } from './commands/edit.js';
+import { editEvent, copyEventToDate } from './commands/edit.js';
 import { hasUpdates, isForkedRepository } from './commands/update.js';
 import { loadSetting } from './services/settingService.js';
 import { setupKeyBindings } from './ui/keyConfig.js';
@@ -26,7 +26,7 @@ export async function runApp() {
   ];
   events.sort((a, b) => a.start - b.start);
 
-  const { screen, inputBox, keypressListener } = createLayout(calendars, events);
+  const { screen, inputBox, keypressListener, lastYearTable } = createLayout(calendars, events);
   const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
   const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
 
@@ -62,6 +62,25 @@ export async function runApp() {
     const selectedEvent = selectedItem.event || null;
     const selectedDate = selectedItem.date || null;
     editEvent(auth, screen, calendars, selectedEvent, events, allEvents, selectedDate);
+  });
+
+  // 去年の予定テーブルから c キーでイベントをコピー
+  lastYearTable.key(['c'], () => {
+    const idx = lastYearTable.selected;
+    if (!lastYearTable.displayItems || !lastYearTable.displayItems[idx]) return;
+    const { event: lastYearEvent } = lastYearTable.displayItems[idx];
+    if (!lastYearEvent) {
+      logTable.log('コピーするイベントが選択されていません。');
+      screen.render();
+      return;
+    }
+
+    // 左テーブルの選択日を取得
+    const leftIdx = leftTable.selected;
+    const leftItem = leftTable.displayItems && leftTable.displayItems[leftIdx];
+    const targetDate = leftItem ? leftItem.date : new Date();
+
+    copyEventToDate(auth, screen, calendars, lastYearEvent, targetDate, events, allEvents);
   });
 
   setupKeyBindings(screen, auth, calendars, events, allEvents, inputBox, setting);

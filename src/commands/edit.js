@@ -618,3 +618,113 @@ export function editEvent(
     screen.render();
   });
 }
+
+/**
+ * 去年の予定テーブルから選択したイベントを targetDate の日付にコピーするフロー
+ * カレンダ選択 → フォーム（ソースイベントの内容を日付だけ targetDate に変更してプリフィル）→ 保存
+ */
+export async function copyEventToDate(
+  auth,
+  screen,
+  calendars,
+  sourceEvent,
+  targetDate,
+  events,
+  allEvents
+) {
+  const calendar = google.calendar({ version: 'v3', auth });
+  const calendarList = screen.children.find(child => child.options.label === 'Calendar List');
+  const leftTable = screen.children.find(child => child.options.label === 'Upcoming Events');
+  const logTable = screen.children.find(child => child.options.label === 'Gcal.js Log');
+  const { formBox, formFields } = createAddForm(screen);
+  const tempFilePath = path.join(os.tmpdir(), 'blessed-editor.txt');
+
+  const calendarNames = Array.from(new Set(calendars.map(cal => cal.summary)));
+  const calendarIDs = Array.from(new Set(calendars.map(cal => cal.id)));
+
+  const showValidationError = () => {
+    logTable.log('Error: All fields must be filled in.');
+    screen.render();
+  };
+
+  const finalizeSuccess = async message => {
+    await updateTable(auth, leftTable, calendars, events, allEvents);
+    logTable.log(message);
+    if (!formBox.destroyed) {
+      formBox.destroy();
+    }
+    screen.render();
+    leftTable.focus();
+    screen.render();
+  };
+
+  const baseValues = eventToFormValues(sourceEvent);
+  const targetDateInfo = formatDate(targetDate);
+  const initialValues = {
+    ...baseValues,
+    date: targetDateInfo?.date || baseValues.date,
+  };
+
+  calendarList.show();
+  screen.render();
+  calendarList.focus();
+
+  calendarList.once('select', async (item, index) => {
+    const selectedCalendar = calendarNames[index];
+    const selectedCalendarId = calendarIDs[index];
+    calendarList.hide();
+    screen.render();
+
+    formBox.setLabel(
+      `Copy Event to ${targetDateInfo?.date || ''} - ${selectedCalendar}  (Ctrl+S to save)`
+    );
+    applyDetailsToForm(formFields, initialValues, {});
+    formBox.show();
+    formBox.focus();
+    screen.render();
+
+    setupEditorShortcut({ formBox, formFields, screen, tempFilePath, options: {} });
+
+    const updatedValues = await openEditorAndParse(screen, tempFilePath, initialValues, {});
+    if (updatedValues) {
+      applyDetailsToForm(formFields, updatedValues, {});
+      screen.render();
+    }
+
+    setupEscapeShortcut({ formBox, leftTable, logTable, screen });
+
+    setupSaveShortcut({
+      formBox,
+      formFields,
+      options: {},
+      handler: async values => {
+        if (!validateFormValues(values)) {
+          showValidationError();
+          return;
+        }
+
+        const eventResource = buildCalendarEventResource(values);
+
+        calendar.events.insert(
+          { calendarId: selectedCalendarId, resource: eventResource },
+          async err => {
+            if (err) {
+              console.error('The API returned an error: ' + err);
+              logTable.log('Error: Failed to register event.');
+              screen.render();
+              return;
+            }
+            await finalizeSuccess('Event successfully copied!');
+          }
+        );
+      },
+    });
+  });
+
+  calendarList.key(['escape'], () => {
+    calendarList.hide();
+    leftTable.focus();
+    screen.render();
+    logTable.log('Copy cancelled.');
+  });
+}

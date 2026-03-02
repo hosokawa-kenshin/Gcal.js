@@ -39,6 +39,9 @@
         ],
         "exitFullscreen": [
             "escape"
+        ],
+        "toggleLastYear": [
+            "y"
         ]
     }
 }
